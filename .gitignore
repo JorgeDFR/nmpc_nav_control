@@ -1,0 +1,10 @@
+.vscode/
+build/
+devel/
+logs/
+*.swp
+.DS_Store
+
+scripts/__pycache__/
+scripts/c_generated_code/
+scripts/*.json
