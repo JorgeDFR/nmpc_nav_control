@@ -12,13 +12,16 @@ NMPCNavControlROS::NMPCNavControlROS() : nh_priv_("~")
         return;
     }
     
-    tf_buffer_ = new tf2_ros::Buffer;
-	tf_listener_ = new tf2_ros::TransformListener(*tf_buffer_);
+    tf_buffer_ = std::make_unique<tf2_ros::Buffer>();
+    tf_listener_ = std::make_unique<tf2_ros::TransformListener>(*tf_buffer_);
     
-    pub_cmd_vel_   = nh_.advertise<geometry_msgs::Twist>("cmd_vel", 10);
-    sub_goal_pose_ = nh_.subscribe<geometry_msgs::PoseStamped>("pose_goal", 10, 
-                     &NMPCNavControlROS::goalPoseCallback, this);
+    pub_cmd_vel_          = nh_.advertise<geometry_msgs::Twist>("cmd_vel", 10);
+    sub_goal_pose_        = nh_.subscribe<geometry_msgs::PoseStamped>("pose_goal", 10, 
+                            &NMPCNavControlROS::goalPoseReceivedCallback, this);
+    sub_path_no_stack_up_ = nh_.subscribe<itrci_nav::ParametricPathSet>("path_no_stack_up", 10, 
+                            &NMPCNavControlROS::pathNoStackUpReceivedCallback, this);
 
+    ros::Duration(2.0).sleep(); // Delay to fill tf buffer
     mainLoop();
 }
 
@@ -49,15 +52,39 @@ void NMPCNavControlROS::readParam()
     }
 }
 
-void NMPCNavControlROS::goalPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
+void NMPCNavControlROS::goalPoseReceivedCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
+    current_mode_ = Mode::GoToPose;
+    
     NMPCNavControl::Pose goal_pose;
+    // TODO: Check msg->header.frame_id
     goal_pose.x = msg->pose.position.x;
     goal_pose.y = msg->pose.position.y;
     goal_pose.theta = tf2::getYaw(msg->pose.orientation);
 
     goal_pose_array_.clear();
     goal_pose_array_.push_back(goal_pose);
+}
+
+void NMPCNavControlROS::pathNoStackUpReceivedCallback(const itrci_nav::ParametricPathSet::ConstPtr& msg)
+{
+    current_mode_ = Mode::FollowPath;
+
+    if (msg->PathSet.empty()) { 
+        ROS_WARN("Received an empty Path, ignoring...");
+        return;
+    }
+    parametric_trajectories_common::TPathSetRosDecode path_set_ros_decode;
+    TPathList path_set = path_set_ros_decode.fromRos(*msg);
+		
+    upcoming_path_.clear();
+    active_path_.clear();
+    for (TPathList::const_iterator it = path_set.begin(); it != path_set.end(); it++) {
+        if (it->GetFrameId() == "") { continue; }
+        upcoming_path_.push_back(*it);
+        upcoming_path_.back().SetPathLength(1000);
+    }
+    processPathBuffers(0.0);
 }
 
 void NMPCNavControlROS::pubCmdVel() 
@@ -72,28 +99,28 @@ void NMPCNavControlROS::pubCmdVel()
 bool NMPCNavControlROS::getRobotPose() 
 {
 	ros::Time currentTime = ros::Time::now();
-	bool result;
-	try {
-		geometry_msgs::TransformStamped robot_pose;
+    bool result;
+    try {
+        geometry_msgs::TransformStamped robot_pose;
         robot_pose = tf_buffer_->lookupTransform(global_frame_id_, base_frame_id_, ros::Time(0));
         ros::Time time_stamp = robot_pose.header.stamp;
+        
+        robot_pose_.x = robot_pose.transform.translation.x;
+        robot_pose_.y = robot_pose.transform.translation.y;
+        robot_pose_.theta = tf2::getYaw(robot_pose.transform.rotation);
 
-		robot_pose_.x = robot_pose.transform.translation.x;
-		robot_pose_.y = robot_pose.transform.translation.y;
-		robot_pose_.theta = tf2::getYaw(robot_pose.transform.rotation);
-
-		ros::Duration deltaTime = currentTime - time_stamp;
-		if (deltaTime.toSec() > transform_timeout_) {
-			ROS_WARN("[%s] Robot pose data error. Data age = %f s", ros::this_node::getName().c_str(), 
+        ros::Duration deltaTime = currentTime - time_stamp;
+        if (deltaTime.toSec() > transform_timeout_) {
+            ROS_WARN("[%s] Robot pose data error. Data age = %f s", ros::this_node::getName().c_str(), 
                                                                     deltaTime.toSec());
-			result = false;
-		} else { result = true; }
+            result = false;
+        } else { result = true; }
 
-	} catch (tf2::TransformException &ex) {
-		ROS_WARN("[%s] %s", ros::this_node::getName().c_str(), ex.what());
-		result = false;
-	}
-	return result;
+    } catch (tf2::TransformException &ex) {
+        ROS_WARN("[%s] %s", ros::this_node::getName().c_str(), ex.what());
+        result = false;
+    }
+    return result;
 }
 
 void NMPCNavControlROS::mainLoop()
@@ -102,15 +129,88 @@ void NMPCNavControlROS::mainLoop()
 
     ros::Rate loop_rate(control_freq_);
     while (ros::ok()) {
-        if (!goal_pose_array_.empty() && getRobotPose()) {
-            bool pub_vel = mpc_control_->run(robot_pose_, goal_pose_array_, robot_vel_ref_, cpu_time_);
-            if (pub_vel) { pubCmdVel(); }
-            ROS_DEBUG_NAMED("nmpc_solver", "CPU time: %lf s", cpu_time_);
-        } 
+        if (getRobotPose()) {
+            if (current_mode_ == Mode::FollowPath) {
+                processNearestPoint();
+                processPathBuffers(active_path_u_);
+
+                PathDiscretizer pathDiscretizer(mpc_control_->getDeltaTime(), mpc_control_->getHorizon(), true);
+                std::vector<PathDiscretizer::Pose> next_poses;
+                pathDiscretizer.getNextNPoses(active_path_, active_path_u_, next_poses);
+                goal_pose_array_.clear();
+
+                for (size_t i = 0; i < next_poses.size(); i++) {
+                    NMPCNavControl::Pose pose;
+                    pose.x = next_poses[i].x;
+                    pose.x = next_poses[i].y;
+                    pose.x = next_poses[i].theta;
+                    goal_pose_array_.push_back(pose);
+                }
+            }
+            
+            if (current_mode_ != Mode::Idle) {
+                bool pub_vel = mpc_control_->run(robot_pose_, goal_pose_array_, robot_vel_ref_, cpu_time_);
+                if (pub_vel) { pubCmdVel(); }
+                ROS_DEBUG_NAMED("nmpc_solver", "CPU time: %lf s", cpu_time_);
+            } 
+        }
 
         ros::spinOnce();
         loop_rate.sleep();
     }
 }
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+/******************************************* Help Functions **********************************************/
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void NMPCNavControlROS::processPathBuffers(const double active_path_u)
+{
+    double path_length = 0.0;
+    for (TPathList::iterator it = active_path_.begin(); it != active_path_.end(); it++) {
+        if (it == active_path_.begin()) { path_length += it->GetPathLength() * (1 - active_path_u); } // aproximation
+        else { path_length += it->GetPathLength(); }
+	}
+
+    while ((path_length < max_active_path_length_) && (upcoming_path_.size() > 0)) {
+        if (active_path_.size() > 0) {
+            parametric_trajectories_common::TPath active_path_test = active_path_.back();
+            parametric_trajectories_common::TPath upcoming_path_test = upcoming_path_.front();
+            if ((active_path_test.GetVelocity() * upcoming_path_test.GetVelocity()) < 0) { break; }
+            if (active_path_test.GetFrameId() != upcoming_path_test.GetFrameId()) { break; }
+        }
+        active_path_.push_back(upcoming_path_.front());
+        upcoming_path_.pop_front();
+        path_length += active_path_.back().GetPathLength();
+    }
+}
+
+void NMPCNavControlROS::processNearestPoint()
+{
+    parametric_trajectories_common::TPathProcessMinDist min_dist_opti(10, 0.01);
+    double x, y, theta, theta_holonomic;
+    active_path_u_ = min_dist_opti.GetMinDist(active_path_, robot_pose_.x, robot_pose_.y, robot_pose_.theta, 
+                                              x, y, theta, theta_holonomic);
+
+    unsigned int active_path_num = std::floor(active_path_u_);
+    if (active_path_.size() > active_path_num) {
+        for (unsigned int i = 0; i < active_path_num; i++) {
+            active_path_.pop_front();
+            active_path_u_ = active_path_u_ - 1;
+        }
+    }
+}
+
+double NMPCNavControlROS::calcDistToEnd()
+{
+    double distance_to_end = 0.0;
+    for (TPathList::iterator it = active_path_.begin(); it != active_path_.end(); it++) {
+        if (it == active_path_.begin()) { distance_to_end += it->GetPathLength() * (1 - active_path_u_); } // aproximation
+        else { distance_to_end += it->GetPathLength(); }
+    }
+    return distance_to_end;
+}
+
 
 } // namespace nmpc_nav_control

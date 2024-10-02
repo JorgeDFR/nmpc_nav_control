@@ -63,6 +63,8 @@ class NMPCNavControl {
         ~NMPCNavControl() = default;
 
         bool run(const Pose& robot_pose, std::list<Pose>& traj_ref, CmdVel& robot_vel_ref, double& cpu_time);
+        double getDeltaTime() { return dt_; }
+        double getHorizon() { return OMNI4AMR_NX; }
 
     private:
         void directKinematrics(const double v, const double vn, const double w,

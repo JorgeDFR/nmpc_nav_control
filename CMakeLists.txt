@@ -23,10 +23,12 @@ find_package(catkin REQUIRED COMPONENTS
   tf2_ros
   geometry_msgs
   itrci_nav
+  parametric_trajectories_common
 )
 
 # Find additional libraries
 find_package(Eigen3 REQUIRED)
+find_package(yaml-cpp REQUIRED)
 
 # Acados installation path and c_generated code path
 set(acados_include "~/acados_install/include")
@@ -43,8 +45,10 @@ catkin_package(
     tf2_ros
     geometry_msgs
     itrci_nav
+    parametric_trajectories_common
   DEPENDS 
     Eigen3
+    yaml-cpp
 )
 
 # Build
@@ -66,12 +70,14 @@ link_directories(${omni4amr_model})
 # add_executable(${PROJECT_NAME}
 #   src/${PROJECT_NAME}/NMPCNavControlROS.cpp
 #   src/${PROJECT_NAME}/NMPCNavControl.cpp
+#   src/${PROJECT_NAME}/PathDiscretizer.cpp
 # )
 
 # - declare a C++ executable
 add_executable(${PROJECT_NAME}
   src/${PROJECT_NAME}/NMPCNavControlROS.cpp
   src/${PROJECT_NAME}/NMPCNavControl.cpp
+  src/${PROJECT_NAME}/PathDiscretizer.cpp
   src/main.cpp
 )
 
@@ -90,6 +96,7 @@ add_dependencies(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${Eigen_LIBRARIES}
+  yaml-cpp
   ${acados_lib}/libacados.so
   ${omni4amr_model}/libacados_ocp_solver_omni4amr.so
 )

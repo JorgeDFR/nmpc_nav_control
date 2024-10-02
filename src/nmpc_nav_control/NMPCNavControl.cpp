@@ -123,6 +123,6 @@ double NMPCNavControl::unwrapAngle(double current, double previous)
     if (delta > M_PI) { current -= 2 * M_PI; } 
     else if (delta < -M_PI) { current += 2 * M_PI; }
     return current;
-};
+}
 
 } // namespace nmpc_nav_control
