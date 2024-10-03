@@ -18,17 +18,20 @@ NMPCNavControl::NMPCNavControl(double l1_plus_l2, double dt) : l1_plus_l2_(l1_pl
     for(unsigned int i = 0; i < OMNI4AMR_NU; i++) acados_out_.u0[i] = 0.0;
 }
 
-bool NMPCNavControl::run(const Pose& robot_pose, std::list<Pose>& traj_ref, CmdVel& robot_vel_ref, double& cpu_time)
+void NMPCNavControl::run(const Pose& robot_pose, const std::list<Pose>& traj_ref, CmdVel& robot_vel_ref, 
+                         double& cpu_time, bool& pub_vel, bool& reach_end_traj)
 {   
+    pub_vel = reach_end_traj = false;
+    
     // Check end of trajectory
     double d = dist(robot_pose.x, robot_pose.y, traj_ref.begin()->x, traj_ref.begin()->y);
     double ang = normAngRad(robot_pose.theta - traj_ref.begin()->theta);
     if ((d <= 0.005) && (ang <= M_PI / 180.0)) {
-        traj_ref.pop_front();
         robot_vel_ref.v = 0.0;
         robot_vel_ref.vn = 0.0;
         robot_vel_ref.w = 0.0;
-        return true;
+        pub_vel = reach_end_traj = true;
+        return;
     }
 
     // Set initial state
@@ -70,7 +73,7 @@ bool NMPCNavControl::run(const Pose& robot_pose, std::list<Pose>& traj_ref, CmdV
         std::stringstream error;
         error << "acados_solve() returned status " << acados_status_ << ".";
         throw std::runtime_error(error.str());
-        return false;
+        return;
     }
 
     acados_out_.status = acados_status_;
@@ -96,7 +99,7 @@ bool NMPCNavControl::run(const Pose& robot_pose, std::list<Pose>& traj_ref, CmdV
     ocp_nlp_out_get(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims, 
                     mpc_capsule_->nlp_out, 1, "x", (void*)acados_in_.x0);
 
-    return true;
+    pub_vel = true;
 }   
 
 

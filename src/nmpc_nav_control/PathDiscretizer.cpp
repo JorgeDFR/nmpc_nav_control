@@ -62,7 +62,7 @@ void PathDiscretizer::getNextNPoses(const TPathList path_list, const double &nea
     }
 }
   
-PathDiscretizer::Pose PathDiscretizer::getPoseSample(const double &sample_u)
+PathDiscretizer::Pose PathDiscretizer::getPoseSample(const double sample_u)
 {
     int path_num = std::floor(sample_u);
     double u = sample_u - (double)path_num;
@@ -84,7 +84,7 @@ PathDiscretizer::Pose PathDiscretizer::getPoseSample(const double &sample_u)
     return result;
 }
 
-PathDiscretizer::Vel PathDiscretizer::getVelSample(const double &sample_u)
+PathDiscretizer::Vel PathDiscretizer::getVelSample(const double sample_u)
 {
     int path_num = std::floor(sample_u);
     double u = sample_u - (double)path_num;

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef PATH_DISCRETIZER_H
+#define PATH_DISCRETIZER_H
 
 #include <vector>
 #include <list>
@@ -24,7 +25,8 @@ class PathDiscretizer {
     PathDiscretizer(double sample_period, int num_poses, bool is_holonomic = false);
     ~PathDiscretizer() = default;
 
-    void getNextNPoses(const TPathList path_list, const double &nearest_sample_u, std::vector<Pose> &next_poses);
+    void getNextNPoses(const TPathList path_list, const double &nearest_sample_u, 
+                       std::vector<Pose> &next_poses);
   
   private:
     double sample_period_;
@@ -34,8 +36,10 @@ class PathDiscretizer {
     double percent_error_dist_treshold_;
     std::vector<parametric_trajectories_common::TPath> path_vector;
     
-    Pose getPoseSample(const double &sample_u);
-    Vel getVelSample(const double &sample_u);
+    Pose getPoseSample(const double sample_u);
+    Vel getVelSample(const double sample_u);
 };
 
 } // namespace nmpc_nav_control
+
+#endif // PATH_DISCRETIZER_H

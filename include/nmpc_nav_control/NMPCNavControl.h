@@ -1,4 +1,5 @@
-#pragma once
+#ifndef NMPC_NAV_CONTROL_H
+#define NMPC_NAV_CONTROL_H
 
 #include <stdexcept> 
 #include <sstream>
@@ -62,9 +63,10 @@ class NMPCNavControl {
         NMPCNavControl(double l1_plus_l2, double dt);
         ~NMPCNavControl() = default;
 
-        bool run(const Pose& robot_pose, std::list<Pose>& traj_ref, CmdVel& robot_vel_ref, double& cpu_time);
+        void run(const Pose& robot_pose, const std::list<Pose>& traj_ref, CmdVel& robot_vel_ref, 
+                 double& cpu_time, bool& pub_vel, bool& reach_end_traj);
         double getDeltaTime() { return dt_; }
-        double getHorizon() { return OMNI4AMR_NX; }
+        double getHorizon() { return OMNI4AMR_N; }
 
     private:
         void directKinematrics(const double v, const double vn, const double w,
@@ -77,3 +79,5 @@ class NMPCNavControl {
 };
 
 } // namespace nmpc_nav_control
+
+#endif // NMPC_NAV_CONTROL_H

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef NMPC_NAV_CONTROL_ROS_H
+#define NMPC_NAV_CONTROL_ROS_H
 
 #include <memory>
 #include <list>
@@ -81,3 +82,5 @@ class NMPCNavControlROS {
 };
 
 } // namespace nmpc_nav_control
+
+#endif // NMPC_NAV_CONTROL_ROS_H

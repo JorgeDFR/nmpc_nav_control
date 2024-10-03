@@ -48,7 +48,6 @@ catkin_package(
     parametric_trajectories_common
   DEPENDS 
     Eigen3
-    yaml-cpp
 )
 
 # Build
@@ -96,7 +95,6 @@ add_dependencies(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${Eigen_LIBRARIES}
-  yaml-cpp
   ${acados_lib}/libacados.so
   ${omni4amr_model}/libacados_ocp_solver_omni4amr.so
 )

@@ -31,17 +31,19 @@ void NMPCNavControlROS::readParam()
     nh_priv_.param<std::string>("base_frame_id", base_frame_id_, "base_footprint");
     nh_priv_.param<int>("control_freq", control_freq_, 40);
     nh_priv_.param<double>("transform_timeout", transform_timeout_, 0.1);
+    nh_priv_.param<double>("max_active_path_length_", max_active_path_length_, 5.0);
 
     double l1, l2, l1_plus_l2, dt;
     nh_priv_.param<double>("rob_dist_between_front_back_wh", l1, 0.265);
     nh_priv_.param<double>("rob_dist_between_left_right_wh", l2, 0.270);
-    l1_plus_l2 = l1+l2;
-    dt = 1.0/double(control_freq_);    
+    l1_plus_l2 = l1 + l2;
+    dt = 1.0 / double(control_freq_);
 
     ROS_INFO("[%s] Global frame ID: %s", ros::this_node::getName().c_str(), global_frame_id_.c_str());
     ROS_INFO("[%s] Base frame ID: %s", ros::this_node::getName().c_str(), base_frame_id_.c_str());
     ROS_INFO("[%s] Controller frequency: %d Hz", ros::this_node::getName().c_str(), control_freq_);
     ROS_INFO("[%s] Transform timeout: %.02f s", ros::this_node::getName().c_str(), transform_timeout_);
+    ROS_INFO("[%s] Maximum active path length: %.02f M", ros::this_node::getName().c_str(), max_active_path_length_);
     ROS_INFO("[%s] Robot distances (l1 + l2): %lf m", ros::this_node::getName().c_str(), l1_plus_l2);
 
     try {
@@ -129,12 +131,15 @@ void NMPCNavControlROS::mainLoop()
 
     ros::Rate loop_rate(control_freq_);
     while (ros::ok()) {
+        
+        // ros::WallTime start_time = ros::WallTime::now(); // Use system time
+
         if (getRobotPose()) {
             if (current_mode_ == Mode::FollowPath) {
                 processNearestPoint();
                 processPathBuffers(active_path_u_);
 
-                PathDiscretizer pathDiscretizer(mpc_control_->getDeltaTime(), mpc_control_->getHorizon(), true);
+                PathDiscretizer pathDiscretizer(mpc_control_->getDeltaTime(), mpc_control_->getHorizon(), false);
                 std::vector<PathDiscretizer::Pose> next_poses;
                 pathDiscretizer.getNextNPoses(active_path_, active_path_u_, next_poses);
                 goal_pose_array_.clear();
@@ -142,18 +147,30 @@ void NMPCNavControlROS::mainLoop()
                 for (size_t i = 0; i < next_poses.size(); i++) {
                     NMPCNavControl::Pose pose;
                     pose.x = next_poses[i].x;
-                    pose.x = next_poses[i].y;
-                    pose.x = next_poses[i].theta;
+                    pose.y = next_poses[i].y;
+                    pose.theta = next_poses[i].theta;
                     goal_pose_array_.push_back(pose);
                 }
             }
             
+            if (goal_pose_array_.empty()) { current_mode_ = Mode::Idle; }
+
             if (current_mode_ != Mode::Idle) {
-                bool pub_vel = mpc_control_->run(robot_pose_, goal_pose_array_, robot_vel_ref_, cpu_time_);
-                if (pub_vel) { pubCmdVel(); }
-                ROS_DEBUG_NAMED("nmpc_solver", "CPU time: %lf s", cpu_time_);
+                try {
+                    bool pub_vel, reach_end_traj;
+                    mpc_control_->run(robot_pose_, goal_pose_array_, robot_vel_ref_, cpu_time_, pub_vel, reach_end_traj);
+                    if (pub_vel) { pubCmdVel(); }
+                    if (reach_end_traj) { current_mode_ = Mode::Idle; } // TODO: Enable stack up trajectory
+                    ROS_DEBUG_NAMED("nmpc_solver", "CPU time: %lf ms", cpu_time_);
+                } catch (const std::exception& e) {
+                    ROS_ERROR("[%s] Exception caught: %s.", ros::this_node::getName().c_str(), e.what());
+                    current_mode_ = Mode::Idle;
+                }
             } 
         }
+        
+        // ros::WallDuration timeLoad = ros::WallTime::now() - start_time;
+        // ROS_INFO("Control loop time load: %lf ms", timeLoad.toNSec()*1.0e-6);
 
         ros::spinOnce();
         loop_rate.sleep();

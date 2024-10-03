@@ -11,7 +11,7 @@ N = int(np.ceil(TF_INI / DT))          # number of shooting nodes
 TF = N * DT                            # [s] effective prediction horizon
 
 V_MAX = 1.0                            # [m/s] max linear velocity
-A_MAX = 0.5                            # [m/s^2] max acceleration
+A_MAX = 1.0                            # [m/s^2] max acceleration
 
                                        # Path cost: state weights
 Q = np.diag([10.0, 10.0, 10.0,         # robot pose (x, y, theta)
