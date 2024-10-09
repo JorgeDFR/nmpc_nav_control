@@ -28,11 +28,12 @@ find_package(catkin REQUIRED COMPONENTS
 
 # Find additional libraries
 find_package(Eigen3 REQUIRED)
-find_package(yaml-cpp REQUIRED)
+
+# Add the cmake/ directory to CMake's module search path
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+find_package(acados REQUIRED)
 
 # Acados installation path and c_generated code path
-set(acados_include "~/acados_install/include")
-set(acados_lib "~/acados_install/lib")
 set(omni4amr_model ${PROJECT_SOURCE_DIR}/scripts/c_generated_code)
 
 # Catkin specific configuration
@@ -47,7 +48,8 @@ catkin_package(
     itrci_nav
     parametric_trajectories_common
   DEPENDS 
-    Eigen3
+    EIGEN3
+    ACADOS
 )
 
 # Build
@@ -55,13 +57,9 @@ catkin_package(
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
-  ${Eigen_INCLUDE_DIRS}
-  ${acados_include}
-  ${acados_include}/blasfeo/include/
-  ${acados_include}/hpipm/include/
-  ${acados_include}/acados/
-  ${acados_include}/qpOASES_e/
-  ${omni4amr_model}
+  ${EIGEN3_INCLUDE_DIRS}
+  ${ACADOS_INCLUDE_DIRS}
+  ${omni4amr_model}  
 )
 link_directories(${omni4amr_model})
 
@@ -94,8 +92,8 @@ add_dependencies(${PROJECT_NAME}
 # - specify linking libraries
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
-  ${Eigen_LIBRARIES}
-  ${acados_lib}/libacados.so
+  ${EIGEN3_LIBRARIES}
+  ${ACADOS_LIBRARIES}
   ${omni4amr_model}/libacados_ocp_solver_omni4amr.so
 )
 

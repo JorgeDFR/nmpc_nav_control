@@ -5,7 +5,7 @@ int main(int argc, char* argv[]) {
 
   nmpc_nav_control::NMPCNavControlROS node;
   
+  ros::spin();
   ros::shutdown();
-
   return 0;
 }

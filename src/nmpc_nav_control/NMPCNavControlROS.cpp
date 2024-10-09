@@ -15,14 +15,25 @@ NMPCNavControlROS::NMPCNavControlROS() : nh_priv_("~")
     tf_buffer_ = std::make_unique<tf2_ros::Buffer>();
     tf_listener_ = std::make_unique<tf2_ros::TransformListener>(*tf_buffer_);
     
-    pub_cmd_vel_          = nh_.advertise<geometry_msgs::Twist>("cmd_vel", 10);
-    sub_goal_pose_        = nh_.subscribe<geometry_msgs::PoseStamped>("pose_goal", 10, 
-                            &NMPCNavControlROS::goalPoseReceivedCallback, this);
-    sub_path_no_stack_up_ = nh_.subscribe<itrci_nav::ParametricPathSet>("path_no_stack_up", 10, 
-                            &NMPCNavControlROS::pathNoStackUpReceivedCallback, this);
+    sub_goal_pose_          = nh_.subscribe<geometry_msgs::PoseStamped>("pose_goal", 10, 
+                              &NMPCNavControlROS::goalPoseReceivedCallback, this);
+    sub_path_no_stack_up_   = nh_.subscribe<itrci_nav::ParametricPathSet>("path_no_stack_up", 10, 
+                              &NMPCNavControlROS::pathNoStackUpReceivedCallback, this);
+    sub_path_no_stack_up_2_ = nh_.subscribe<itrci_nav::ParametricPathSet2>("path_no_stack_up_2", 10, 
+                              &NMPCNavControlROS::pathNoStackUp2ReceivedCallback, this);
+    sub_control_command_    = nh_.subscribe<std_msgs::String>("control_command", 10, 
+                              &NMPCNavControlROS::controlCommandReceivedCallback, this);
+    pub_cmd_vel_            = nh_.advertise<geometry_msgs::Twist>("cmd_vel", 10);
+    pub_control_status_     = nh_.advertise<itrci_nav::parametric_trajectories_control_status>("control_status", 10);
+    pub_actual_path_        = nh_.advertise<itrci_nav::ParametricPathSet>("actual_path", 10);
+  
+	ros::Duration timer_period = ros::Duration(static_cast<double>(1.0/control_freq_));
+    main_timer_ = nh_priv_.createTimer(timer_period, &NMPCNavControlROS::mainTimerCallBack, this, false, false);
 
+    ROS_INFO("[%s] NMPC navigation controller node initialized successfully. Ready for operation..", 
+             ros::this_node::getName().c_str()); 
     ros::Duration(2.0).sleep(); // Delay to fill tf buffer
-    mainLoop();
+    main_timer_.start();
 }
 
 void NMPCNavControlROS::readParam()
@@ -56,37 +67,33 @@ void NMPCNavControlROS::readParam()
 
 void NMPCNavControlROS::goalPoseReceivedCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
-    current_mode_ = Mode::GoToPose;
-    
-    NMPCNavControl::Pose goal_pose;
-    // TODO: Check msg->header.frame_id
-    goal_pose.x = msg->pose.position.x;
-    goal_pose.y = msg->pose.position.y;
-    goal_pose.theta = tf2::getYaw(msg->pose.orientation);
-
-    goal_pose_array_.clear();
-    goal_pose_array_.push_back(goal_pose);
+    current_status_ = Status::GoToPose;
+    goal_pose_.header = msg->header;
+    goal_pose_.pose = msg->pose;
 }
 
 void NMPCNavControlROS::pathNoStackUpReceivedCallback(const itrci_nav::ParametricPathSet::ConstPtr& msg)
 {
-    current_mode_ = Mode::FollowPath;
+    path_request_id_ = 0; // TODO: ?????
+    processPathReceived(*msg);
+}
 
-    if (msg->PathSet.empty()) { 
-        ROS_WARN("Received an empty Path, ignoring...");
-        return;
-    }
-    parametric_trajectories_common::TPathSetRosDecode path_set_ros_decode;
-    TPathList path_set = path_set_ros_decode.fromRos(*msg);
-		
-    upcoming_path_.clear();
-    active_path_.clear();
-    for (TPathList::const_iterator it = path_set.begin(); it != path_set.end(); it++) {
-        if (it->GetFrameId() == "") { continue; }
-        upcoming_path_.push_back(*it);
-        upcoming_path_.back().SetPathLength(1000);
-    }
-    processPathBuffers(0.0);
+void NMPCNavControlROS::pathNoStackUp2ReceivedCallback(const itrci_nav::ParametricPathSet2::ConstPtr& msg)
+{
+    itrci_nav::ParametricPathSet path;
+    path.PathSet = msg->PathSet;
+    path.AuxNum0 = msg->AuxNum0;
+    path_request_id_ = msg->request_id; // TODO: ?????
+    processPathReceived(path);
+}
+
+void NMPCNavControlROS::controlCommandReceivedCallback(const std_msgs::String::ConstPtr& msg)
+{
+    std::string command = msg->data;
+    if (command == "break") { current_status_ = Status::Break; }
+    else if(command == "idle") { current_status_ = Status::Idle; }
+    else { ROS_ERROR("[%s] %s is a a invalide control command!", 
+           ros::this_node::getName().c_str(), command.c_str()); }
 }
 
 void NMPCNavControlROS::pubCmdVel() 
@@ -98,10 +105,46 @@ void NMPCNavControlROS::pubCmdVel()
     pub_cmd_vel_.publish(cmd_vel);
 }
 
-bool NMPCNavControlROS::getRobotPose() 
+void NMPCNavControlROS::pubControlStatus()
+{
+    itrci_nav::parametric_trajectories_control_status msg;
+    double patch_remains;
+    switch (current_status_) {
+        case Status::Idle:
+        case Status::Break:
+            msg.status = itrci_nav::parametric_trajectories_control_status::STATUS_IDLE;
+            break;
+        case Status::FollowPath:
+            patch_remains = active_path_.size() + upcoming_path_.size();
+            if (patch_remains > 0) { patch_remains = patch_remains - active_path_u_; }
+            msg.request_id = path_request_id_; // TODO: ?????
+            msg.patch_remains = patch_remains; // TODO: ?????
+            msg.status = itrci_nav::parametric_trajectories_control_status::STATUS_WORKING;
+            break;
+        case Status::GoToPose:
+            msg.status = itrci_nav::parametric_trajectories_control_status::STATUS_WORKING;
+            break;
+        case Status::Error:
+            msg.status = itrci_nav::parametric_trajectories_control_status::STATUS_ERROR;
+            break;
+    }
+    pub_control_status_.publish(msg);
+}
+
+void NMPCNavControlROS::pubActualPath()
+{
+    if (active_path_.size() <= 0) { return; }
+    parametric_trajectories_common::TPathRosDecode path_set_ros_decode;
+    itrci_nav::ParametricPath actual_path = path_set_ros_decode.toRos(active_path_.front());
+    itrci_nav::ParametricPathSet msg;
+    msg.PathSet.push_back(actual_path);
+    msg.AuxNum0 = active_path_u_;
+    pub_actual_path_.publish(msg);
+}
+
+void NMPCNavControlROS::getRobotPose() 
 {
 	ros::Time currentTime = ros::Time::now();
-    bool result;
     try {
         geometry_msgs::TransformStamped robot_pose;
         robot_pose = tf_buffer_->lookupTransform(global_frame_id_, base_frame_id_, ros::Time(0));
@@ -115,72 +158,70 @@ bool NMPCNavControlROS::getRobotPose()
         if (deltaTime.toSec() > transform_timeout_) {
             ROS_WARN("[%s] Robot pose data error. Data age = %f s", ros::this_node::getName().c_str(), 
                                                                     deltaTime.toSec());
-            result = false;
-        } else { result = true; }
-
+            current_status_ = Status::Error;
+        }
     } catch (tf2::TransformException &ex) {
         ROS_WARN("[%s] %s", ros::this_node::getName().c_str(), ex.what());
-        result = false;
+        current_status_ = Status::Error;
     }
-    return result;
 }
 
-void NMPCNavControlROS::mainLoop()
+void NMPCNavControlROS::mainTimerCallBack(const ros::TimerEvent&)
 {
-    ROS_INFO("[%s] NMPC navigation controller node initialized successfully. Ready for operation..", ros::this_node::getName().c_str());
+    ros::WallTime start_time = ros::WallTime::now();
+    mainCycle();
+    ros::WallDuration time_load = ros::WallTime::now() - start_time;
+    ROS_DEBUG_NAMED("main_cycle", "Control loop time load: %lf ms", time_load.toNSec()*1.0e-6);
+}
 
-    ros::Rate loop_rate(control_freq_);
-    while (ros::ok()) {
-        
-        // ros::WallTime start_time = ros::WallTime::now(); // Use system time
+void NMPCNavControlROS::mainCycle()
+{
+    getRobotPose();
 
-        if (getRobotPose()) {
-            if (current_mode_ == Mode::FollowPath) {
-                processNearestPoint();
-                processPathBuffers(active_path_u_);
-
-                PathDiscretizer pathDiscretizer(mpc_control_->getDeltaTime(), mpc_control_->getHorizon(), false);
-                std::vector<PathDiscretizer::Pose> next_poses;
-                pathDiscretizer.getNextNPoses(active_path_, active_path_u_, next_poses);
-                goal_pose_array_.clear();
-
-                for (size_t i = 0; i < next_poses.size(); i++) {
-                    NMPCNavControl::Pose pose;
-                    pose.x = next_poses[i].x;
-                    pose.y = next_poses[i].y;
-                    pose.theta = next_poses[i].theta;
-                    goal_pose_array_.push_back(pose);
-                }
-            }
-            
-            if (goal_pose_array_.empty()) { current_mode_ = Mode::Idle; }
-
-            if (current_mode_ != Mode::Idle) {
-                try {
-                    bool pub_vel, reach_end_traj;
-                    mpc_control_->run(robot_pose_, goal_pose_array_, robot_vel_ref_, cpu_time_, pub_vel, reach_end_traj);
-                    if (pub_vel) { pubCmdVel(); }
-                    if (reach_end_traj) { current_mode_ = Mode::Idle; } // TODO: Enable stack up trajectory
-                    ROS_DEBUG_NAMED("nmpc_solver", "CPU time: %lf ms", cpu_time_);
-                } catch (const std::exception& e) {
-                    ROS_ERROR("[%s] Exception caught: %s.", ros::this_node::getName().c_str(), e.what());
-                    current_mode_ = Mode::Idle;
-                }
-            } 
-        }
-        
-        // ros::WallDuration timeLoad = ros::WallTime::now() - start_time;
-        // ROS_INFO("Control loop time load: %lf ms", timeLoad.toNSec()*1.0e-6);
-
-        ros::spinOnce();
-        loop_rate.sleep();
+    switch (current_status_) {
+        case Status::GoToPose:
+            processGoToPose();
+            break;
+        case Status::FollowPath:
+            processFollowPath();
+            break;
+        case Status::Break:
+            processBreak();
+            break;
+        case Status::Error:
+            break;
+        case Status::Idle:
+            break;
     }
+
+    pubControlStatus();
 }
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 /******************************************* Help Functions **********************************************/
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void NMPCNavControlROS::processPathReceived(const itrci_nav::ParametricPathSet& path)
+{
+    current_status_ = Status::FollowPath;
+
+    if (path.PathSet.empty()) { 
+        ROS_WARN("Received an empty Path, ignoring...");
+        return;
+    }
+    parametric_trajectories_common::TPathSetRosDecode path_set_ros_decode;
+    TPathList path_set = path_set_ros_decode.fromRos(path);
+		
+    upcoming_path_.clear();
+    active_path_.clear();
+    for (TPathList::const_iterator it = path_set.begin(); it != path_set.end(); it++) {
+        if (it->GetFrameId() == "") { continue; }
+        upcoming_path_.push_back(*it);
+        upcoming_path_.back().SetPathLength(1000);
+    }
+    processPathBuffers(0.0);
+}
 
 void NMPCNavControlROS::processPathBuffers(const double active_path_u)
 {
@@ -219,6 +260,72 @@ void NMPCNavControlROS::processNearestPoint()
     }
 }
 
+void NMPCNavControlROS::processBreak()
+{
+    robot_vel_ref_.v = 0.0;
+    robot_vel_ref_.vn = 0.0;
+    robot_vel_ref_.w = 0.0;
+    pubCmdVel();
+    current_status_ = Status::Idle;
+}
+
+void NMPCNavControlROS::processGoToPose()
+{
+    std::list<NMPCNavControl::Pose> goal_pose_array;
+    NMPCNavControl::Pose pose;
+    // TODO: goal_pose_.header.frame_id 
+    pose.x = goal_pose_.pose.position.x;
+    pose.y = goal_pose_.pose.position.y;
+    pose.theta = tf2::getYaw(goal_pose_.pose.orientation);
+    goal_pose_array.push_back(pose);
+
+    executeNMPC(goal_pose_array);
+}
+
+void NMPCNavControlROS::processFollowPath()
+{
+    processNearestPoint();
+    processPathBuffers(active_path_u_);
+
+    PathDiscretizer pathDiscretizer(mpc_control_->getDeltaTime(), mpc_control_->getHorizon(), false);
+    std::vector<PathDiscretizer::Pose> next_poses;
+    pathDiscretizer.getNextNPoses(active_path_, active_path_u_, next_poses);
+    
+    std::list<NMPCNavControl::Pose> goal_pose_array;
+    for (size_t i = 0; i < next_poses.size(); i++) {
+        NMPCNavControl::Pose pose;
+        pose.x = next_poses[i].x;
+        pose.y = next_poses[i].y;
+        pose.theta = next_poses[i].theta;
+        goal_pose_array.push_back(pose);
+    }
+
+    pubActualPath();
+    executeNMPC(goal_pose_array);
+}
+
+void NMPCNavControlROS::executeNMPC(const std::list<NMPCNavControl::Pose>& goal_pose_array)
+{
+    if (goal_pose_array.empty()) { 
+        current_status_ = Status::Idle;
+        return;
+    }
+
+    try {
+        bool pub_vel, reach_end_traj;
+        double cpu_time;
+        mpc_control_->run(robot_pose_, goal_pose_array, robot_vel_ref_, cpu_time, pub_vel, reach_end_traj);
+        if (pub_vel) { pubCmdVel(); }
+        if (reach_end_traj) { current_status_ = Status::Idle; } // TODO: Enable stack up trajectory
+        ROS_DEBUG_NAMED("nmpc_solver", "CPU time: %lf ms", cpu_time);
+    } catch (const std::exception& e) {
+        ROS_ERROR("[%s] Exception caught: %s.", ros::this_node::getName().c_str(), e.what());
+        current_status_ = Status::Error;
+    }
+}
+
+
+
 double NMPCNavControlROS::calcDistToEnd()
 {
     double distance_to_end = 0.0;
@@ -228,6 +335,4 @@ double NMPCNavControlROS::calcDistToEnd()
     }
     return distance_to_end;
 }
-
-
 } // namespace nmpc_nav_control
