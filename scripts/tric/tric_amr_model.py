@@ -43,7 +43,7 @@ def export_tric_amr_model() -> AcadosModel:
     # dynamics
     x_dot         = v * cos_theta * cos_alpha
     y_dot         = v * sin_theta * cos_alpha
-    theta_dot     = v/D * sin_alpha
+    theta_dot     = v/DIST_D * sin_alpha
     v_dot         = -1.0/TAU_V * v     + 1.0/TAU_V * v_ref
     alpha_dot     = -1.0/TAU_A * alpha + 1.0/TAU_A * alpha_ref
     v_ref_dot     = dv_ref

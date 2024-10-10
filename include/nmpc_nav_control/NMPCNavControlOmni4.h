@@ -1,7 +1,6 @@
 #ifndef NMPC_NAV_CONTROL_OMNI4_H
 #define NMPC_NAV_CONTROL_OMNI4_H
 
-#include "omni4amr_model/omni4amr_model.h"
 #include "acados_solver_omni4amr.h"
 
 #include "nmpc_nav_control/NMPCNavControl.h"

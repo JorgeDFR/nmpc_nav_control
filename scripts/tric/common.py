@@ -3,7 +3,7 @@ import numpy as np
 # Tric AMR parameters
 TAU_V = 0.1                            # [s] robot wheels velocity time constant
 TAU_A = 0.5                            # [s] robot stearing angle time constant
-D = 0.270                              # [m] distance between steering wheel and back wheels
+DIST_D = 0.270                         # [m] distance between steering wheel and back wheels
 
 TF_INI = 2.0                           # [s] desired prediction horizon
 FREQ = 40                              # [Hz] controller frequency

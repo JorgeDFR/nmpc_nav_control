@@ -1,7 +1,6 @@
 #ifndef NMPC_NAV_CONTROL_TRIC_H
 #define NMPC_NAV_CONTROL_TRIC_H
 
-#include "tric3amr_model/tric3amr_model.h"
 #include "acados_solver_tric3amr.h"
 
 #include "nmpc_nav_control/NMPCNavControl.h"

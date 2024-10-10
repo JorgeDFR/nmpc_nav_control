@@ -1,7 +1,6 @@
 #ifndef NMPC_NAV_CONTROL_DIFF_H
 #define NMPC_NAV_CONTROL_DIFF_H
 
-#include "diff2amr_model/diff2amr_model.h"
 #include "acados_solver_diff2amr.h"
 
 #include "nmpc_nav_control/NMPCNavControl.h"

@@ -1,8 +1,12 @@
 global_frame_id: 'map'
 base_frame_id: 'base_footprint'
 
-control_freq: 40                        # Hz
-transform_timeout: 0.1                  # seconds
-max_active_path_length: 5.0             # meters
-rob_dist_between_front_back_wh: 0.265   # meters
-rob_dist_between_left_right_wh: 0.270   # meters
+control_freq: 40                          # Hz
+transform_timeout: 0.1                    # seconds
+max_active_path_length: 5.0               # meters
+
+steering_geometry: omni4                  # can be omni4, diff or tric
+rob_dist_between_front_back_wh: 0.265     # meters (for omni4)
+rob_dist_between_left_right_wh: 0.270     # meters (for omni4)
+rob_dist_between_wh: 0.265                # meters (for diff)
+rob_dist_between_steering_back_wh: 0.270  # meters (for tric)

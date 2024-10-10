@@ -2,7 +2,7 @@ import numpy as np
 
 # Diff AMR parameters
 TAU_V = 0.1                            # [s] robot wheels velocity time constant
-B = 0.265                              # [m] distance between left and right wheels
+DIST_B = 0.270                         # [m] distance between left and right wheels
 
 TF_INI = 2.0                           # [s] desired prediction horizon
 FREQ = 40                              # [Hz] controller frequency
