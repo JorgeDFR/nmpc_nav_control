@@ -34,7 +34,9 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 find_package(acados REQUIRED)
 
 # Acados installation path and c_generated code path
-set(omni4amr_model ${PROJECT_SOURCE_DIR}/scripts/c_generated_code)
+set(omni4amr_model ${PROJECT_SOURCE_DIR}/scripts/omni4/c_generated_code)
+set(diff2amr_model ${PROJECT_SOURCE_DIR}/scripts/diff/c_generated_code)
+set(tric3amr_model ${PROJECT_SOURCE_DIR}/scripts/tric/c_generated_code)
 
 # Catkin specific configuration
 catkin_package(
@@ -59,14 +61,21 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIRS}
   ${ACADOS_INCLUDE_DIRS}
-  ${omni4amr_model}  
+  ${omni4amr_model}
+  ${diff2amr_model} 
+  ${tric3amr_model} 
 )
 link_directories(${omni4amr_model})
+link_directories(${diff2amr_model})
+link_directories(${tric3amr_model})
 
 # - declare a C++ library
 # add_executable(${PROJECT_NAME}
 #   src/${PROJECT_NAME}/NMPCNavControlROS.cpp
 #   src/${PROJECT_NAME}/NMPCNavControl.cpp
+#   src/${PROJECT_NAME}/NMPCNavControlOmni4.cpp
+#   src/${PROJECT_NAME}/NMPCNavControlDiff.cpp
+#   src/${PROJECT_NAME}/NMPCNavControlTric.cpp
 #   src/${PROJECT_NAME}/PathDiscretizer.cpp
 # )
 
@@ -74,6 +83,9 @@ link_directories(${omni4amr_model})
 add_executable(${PROJECT_NAME}
   src/${PROJECT_NAME}/NMPCNavControlROS.cpp
   src/${PROJECT_NAME}/NMPCNavControl.cpp
+  src/${PROJECT_NAME}/NMPCNavControlOmni4.cpp
+  src/${PROJECT_NAME}/NMPCNavControlDiff.cpp
+  src/${PROJECT_NAME}/NMPCNavControlTric.cpp
   src/${PROJECT_NAME}/PathDiscretizer.cpp
   src/main.cpp
 )
@@ -95,6 +107,8 @@ target_link_libraries(${PROJECT_NAME}
   ${EIGEN3_LIBRARIES}
   ${ACADOS_LIBRARIES}
   ${omni4amr_model}/libacados_ocp_solver_omni4amr.so
+  ${diff2amr_model}/libacados_ocp_solver_diff2amr.so
+  ${tric3amr_model}/libacados_ocp_solver_tric3amr.so
 )
 
 # # - installation rules

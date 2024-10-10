@@ -81,7 +81,7 @@ def export_omni4_amr_model() -> AcadosModel:
     # store meta information
     model.x_labels = ['$x$ [m]', '$y$ [m]', r'$\theta$ [rad]', 
                       '$v1$ [m/s]', '$v2$ [m/s]', '$v3$ [m/s]', '$v4$ [m/s]',
-                      '$v1_{ref}$ [m/s]', '$v2_{ref}$ [m/s]', '$v3_{ref}$ [m/s]', '$v4_{ref}$ [m/s]',]
+                      '$v1_{ref}$ [m/s]', '$v2_{ref}$ [m/s]', '$v3_{ref}$ [m/s]', '$v4_{ref}$ [m/s]']
     model.u_labels = ['$dv1_{ref}$ [m/s]', '$dv2_{ref}$ [m/s]', '$dv3_{ref}$ [m/s]', '$dv4_{ref}$ [m/s]']
     model.t_label = '$t$ [s]'
 

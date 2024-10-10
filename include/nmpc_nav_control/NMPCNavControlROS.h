@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <list>
+#include <vector>
 
 #include <ros/ros.h>
 #include <tf2_ros/transform_listener.h>
@@ -42,12 +43,16 @@ class NMPCNavControlROS {
 
         ros::Timer main_timer_;
 
-        std::unique_ptr<NMPCNavControl> mpc_control_;
-
         std::string global_frame_id_;
         std::string base_frame_id_;
         int control_freq_;
         double transform_timeout_;
+        std::string steering_geometry_;
+
+        std::unique_ptr<NMPCNavControl> mpc_control_;
+        std::unique_ptr<NMPCNavControl::CmdVel> robot_vel_ref_;
+        NMPCNavControl::Pose robot_pose_;
+        geometry_msgs::PoseStamped goal_pose_;
 
         enum class Status {
             Idle,
@@ -57,11 +62,6 @@ class NMPCNavControlROS {
             Error
         };
         Status current_status_ = Status::Idle;
-
-        NMPCNavControl::Pose robot_pose_;
-        NMPCNavControl::CmdVel robot_vel_ref_;
-
-        geometry_msgs::PoseStamped goal_pose_;
 
         TPathList active_path_;
         TPathList upcoming_path_;
@@ -80,7 +80,7 @@ class NMPCNavControlROS {
         void pathNoStackUpReceivedCallback(const itrci_nav::ParametricPathSet::ConstPtr& msg);
         void pathNoStackUp2ReceivedCallback(const itrci_nav::ParametricPathSet2::ConstPtr& msg);
         void controlCommandReceivedCallback(const std_msgs::String::ConstPtr& msg);
-        void pubCmdVel();
+        void pubCmdVel(bool stop = false);
         void pubControlStatus();
         void pubActualPath();
         void getRobotPose();

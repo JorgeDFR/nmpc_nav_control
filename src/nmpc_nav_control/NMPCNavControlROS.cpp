@@ -1,5 +1,10 @@
 #include "nmpc_nav_control/NMPCNavControlROS.h"
 
+#include "nmpc_nav_control/NMPCNavControlOmni4.h"
+#include "nmpc_nav_control/NMPCNavControlDiff.h"
+#include "nmpc_nav_control/NMPCNavControlTric.h"
+#include "nmpc_nav_control/utils.h"
+
 namespace nmpc_nav_control {
 
 NMPCNavControlROS::NMPCNavControlROS() : nh_priv_("~")
@@ -7,7 +12,7 @@ NMPCNavControlROS::NMPCNavControlROS() : nh_priv_("~")
     try {
         readParam();
     } catch (std::exception& ex) {
-        ROS_FATAL("Error reading the node parameters (%s)", ex.what());
+        ROS_FATAL("[%s] Error reading the node parameters (%s)", ros::this_node::getName().c_str(), ex.what());
         ros::shutdown();
         return;
     }
@@ -27,41 +32,91 @@ NMPCNavControlROS::NMPCNavControlROS() : nh_priv_("~")
     pub_control_status_     = nh_.advertise<itrci_nav::parametric_trajectories_control_status>("control_status", 10);
     pub_actual_path_        = nh_.advertise<itrci_nav::ParametricPathSet>("actual_path", 10);
   
-	ros::Duration timer_period = ros::Duration(static_cast<double>(1.0/control_freq_));
+    ros::Duration timer_period = ros::Duration(static_cast<double>(1.0/control_freq_));
     main_timer_ = nh_priv_.createTimer(timer_period, &NMPCNavControlROS::mainTimerCallBack, this, false, false);
 
-    ROS_INFO("[%s] NMPC navigation controller node initialized successfully. Ready for operation..", 
-             ros::this_node::getName().c_str()); 
+    ROS_INFO("[%s] NMPC navigation controller node initialized successfully. Ready for operation..", ros::this_node::getName().c_str()); 
     ros::Duration(2.0).sleep(); // Delay to fill tf buffer
     main_timer_.start();
 }
 
 void NMPCNavControlROS::readParam()
 {
+    if (!nh_priv_.hasParam("steering_geometry")) {
+        throw std::runtime_error("The node nmpc_nav_control requires the definition "
+                                 "of the steering_geometry parameter");
+    }
+
     nh_priv_.param<std::string>("global_frame_id", global_frame_id_, "map");
     nh_priv_.param<std::string>("base_frame_id", base_frame_id_, "base_footprint");
     nh_priv_.param<int>("control_freq", control_freq_, 40);
     nh_priv_.param<double>("transform_timeout", transform_timeout_, 0.1);
     nh_priv_.param<double>("max_active_path_length_", max_active_path_length_, 5.0);
-
-    double l1, l2, l1_plus_l2, dt;
-    nh_priv_.param<double>("rob_dist_between_front_back_wh", l1, 0.265);
-    nh_priv_.param<double>("rob_dist_between_left_right_wh", l2, 0.270);
-    l1_plus_l2 = l1 + l2;
-    dt = 1.0 / double(control_freq_);
-
+    
     ROS_INFO("[%s] Global frame ID: %s", ros::this_node::getName().c_str(), global_frame_id_.c_str());
     ROS_INFO("[%s] Base frame ID: %s", ros::this_node::getName().c_str(), base_frame_id_.c_str());
     ROS_INFO("[%s] Controller frequency: %d Hz", ros::this_node::getName().c_str(), control_freq_);
     ROS_INFO("[%s] Transform timeout: %.02f s", ros::this_node::getName().c_str(), transform_timeout_);
     ROS_INFO("[%s] Maximum active path length: %.02f M", ros::this_node::getName().c_str(), max_active_path_length_);
-    ROS_INFO("[%s] Robot distances (l1 + l2): %lf m", ros::this_node::getName().c_str(), l1_plus_l2);
 
-    try {
-        mpc_control_ = std::make_unique<NMPCNavControl>(l1_plus_l2, dt);
-    } catch (const std::exception& e) {
-        ROS_ERROR("[%s] Exception caught: %s. Terminating node.", ros::this_node::getName().c_str(), e.what());
-        ros::shutdown();
+    nh_priv_.getParam("steering_geometry", steering_geometry_);
+    ROS_INFO("[%s] Steering geometry: %s", ros::this_node::getName().c_str(), steering_geometry_.c_str());
+
+    double dt = 1.0 / double(control_freq_);
+    if (steering_geometry_ == "omni4") {
+        if (!nh_priv_.hasParam("rob_dist_between_front_back_wh") ||
+            !nh_priv_.hasParam("rob_dist_between_left_right_wh")) {
+            throw std::runtime_error("The steering geometry " + steering_geometry_ + " requires the "
+                                     "definition of the following parameters: "
+                                     "rob_dist_between_front_back_wh, rob_dist_between_left_right_wh");
+        }
+        double l1, l2, l1_plus_l2;
+        nh_priv_.getParam("rob_dist_between_front_back_wh", l1);
+        nh_priv_.getParam("rob_dist_between_left_right_wh", l2);
+        l1_plus_l2 = l1 + l2;
+        ROS_INFO("[%s] Robot distance between wheels (l1 + l2): %lf m", ros::this_node::getName().c_str(), l1_plus_l2);
+
+        try {
+            mpc_control_ = std::make_unique<NMPCNavControlOmni4>(dt, l1_plus_l2);
+            robot_vel_ref_ = std::make_unique<NMPCNavControlOmni4::CmdVelOmni4>();
+        } catch (const std::exception& e) {
+            ROS_ERROR("[%s] Exception caught: %s. Terminating node.", ros::this_node::getName().c_str(), e.what());
+            ros::shutdown();
+        }
+    } else if (steering_geometry_ == "diff") {
+        if (!nh_priv_.hasParam("rob_dist_between_wh")) {
+            throw std::runtime_error("The steering geometry " + steering_geometry_ + " requires the "
+                                     "definition of the following parameter: rob_dist_between_wh");
+        }
+        double dist_b;
+        nh_priv_.getParam("rob_dist_between_wh", dist_b);
+        ROS_INFO("[%s] Robot distance between wheels (b): %lf m", ros::this_node::getName().c_str(), dist_b);
+
+        try {
+            mpc_control_ = std::make_unique<NMPCNavControlDiff>(dt, dist_b);
+            robot_vel_ref_ = std::make_unique<NMPCNavControlDiff::CmdVelDiff>();
+        } catch (const std::exception& e) {
+            ROS_ERROR("[%s] Exception caught: %s. Terminating node.", ros::this_node::getName().c_str(), e.what());
+            ros::shutdown();
+        }
+    } else if (steering_geometry_ == "tric") {
+        if (!nh_priv_.hasParam("rob_dist_between_steering_back_wh")) {
+            throw std::runtime_error("The steering geometry " + steering_geometry_ + " requires the "
+                                     "definition of the following parameter: rob_dist_between_steering_back_wh");
+        }
+        double dist_d;
+        nh_priv_.getParam("rob_dist_between_steering_back_wh", dist_d);
+        ROS_INFO("[%s] Robot distance between wheels (d): %lf m", ros::this_node::getName().c_str(), dist_d);
+
+        try {
+            mpc_control_ = std::make_unique<NMPCNavControlTric>(dt, dist_d);
+            robot_vel_ref_ = std::make_unique<NMPCNavControlTric::CmdVelTric>();
+        } catch (const std::exception& e) {
+            ROS_ERROR("[%s] Exception caught: %s. Terminating node.", ros::this_node::getName().c_str(), e.what());
+            ros::shutdown();
+        }
+    } else {
+        throw std::runtime_error("Invalid steering_geometry (check documentation for supported ones)");
     }
 }
 
@@ -96,12 +151,29 @@ void NMPCNavControlROS::controlCommandReceivedCallback(const std_msgs::String::C
            ros::this_node::getName().c_str(), command.c_str()); }
 }
 
-void NMPCNavControlROS::pubCmdVel() 
-{
+void NMPCNavControlROS::pubCmdVel(bool stop) 
+{   
     geometry_msgs::Twist cmd_vel;
-    cmd_vel.linear.x = robot_vel_ref_.v;
-    cmd_vel.linear.y = robot_vel_ref_.vn;
-    cmd_vel.angular.z = robot_vel_ref_.w;
+    if (steering_geometry_ == "omni4") {
+        auto vel_ref = dynamic_cast<NMPCNavControlOmni4::CmdVelOmni4*>(robot_vel_ref_.get());
+        cmd_vel.linear.x = stop ? 0.0 : vel_ref->v;
+        cmd_vel.linear.y = stop ? 0.0 : vel_ref->vn;
+        cmd_vel.angular.z = stop ? 0.0 : vel_ref->w;
+    } else if (steering_geometry_ == "diff") {
+        auto vel_ref = dynamic_cast<NMPCNavControlDiff::CmdVelDiff*>(robot_vel_ref_.get());
+        cmd_vel.linear.x = stop ? 0.0 : vel_ref->v;
+        cmd_vel.linear.y = 0.0;
+        cmd_vel.angular.z = stop ? 0.0 : vel_ref->w;
+    } else if (steering_geometry_ == "tric") {
+        auto vel_ref = dynamic_cast<NMPCNavControlTric::CmdVelTric*>(robot_vel_ref_.get());
+        cmd_vel.linear.x = stop ? 0.0 : vel_ref->v;
+        cmd_vel.linear.y = 0.0;
+        cmd_vel.angular.z = vel_ref->alpha; // TODO: Get real angle
+    } else {
+        ROS_ERROR("[%s] Unsupported steering geometry in pubCmdVel()", ros::this_node::getName().c_str());
+        return;
+    }
+
     pub_cmd_vel_.publish(cmd_vel);
 }
 
@@ -144,7 +216,7 @@ void NMPCNavControlROS::pubActualPath()
 
 void NMPCNavControlROS::getRobotPose() 
 {
-	ros::Time currentTime = ros::Time::now();
+    ros::Time currentTime = ros::Time::now();
     try {
         geometry_msgs::TransformStamped robot_pose;
         robot_pose = tf_buffer_->lookupTransform(global_frame_id_, base_frame_id_, ros::Time(0));
@@ -262,10 +334,7 @@ void NMPCNavControlROS::processNearestPoint()
 
 void NMPCNavControlROS::processBreak()
 {
-    robot_vel_ref_.v = 0.0;
-    robot_vel_ref_.vn = 0.0;
-    robot_vel_ref_.w = 0.0;
-    pubCmdVel();
+    pubCmdVel(true);
     current_status_ = Status::Idle;
 }
 
@@ -278,6 +347,15 @@ void NMPCNavControlROS::processGoToPose()
     pose.y = goal_pose_.pose.position.y;
     pose.theta = tf2::getYaw(goal_pose_.pose.orientation);
     goal_pose_array.push_back(pose);
+
+    // Check end of trajectory
+    double d = dist(robot_pose_.x, robot_pose_.y, pose.x, pose.y);
+    double ang = normAngRad(robot_pose_.theta - pose.theta);
+    if ((d <= 0.005) && (ang <= M_PI / 180.0)) {
+        pubCmdVel(true);
+        current_status_ = Status::Idle;
+        return;
+    }
 
     executeNMPC(goal_pose_array);
 }
@@ -300,6 +378,21 @@ void NMPCNavControlROS::processFollowPath()
         goal_pose_array.push_back(pose);
     }
 
+    // Check end of trajectory
+    double d = dist(robot_pose_.x, robot_pose_.y, goal_pose_array.begin()->x, goal_pose_array.begin()->y);
+    double ang = normAngRad(robot_pose_.theta - goal_pose_array.begin()->theta);
+    if ((d <= 0.005) && (ang <= M_PI / 180.0)) {
+        if (upcoming_path_.size() == 0) { current_status_ = Status::Idle; }
+        else {
+            active_path_.pop_front();
+            active_path_.push_back(upcoming_path_.front());
+            upcoming_path_.pop_front();
+        }
+        
+        pubCmdVel(true);
+        return;
+    }
+
     pubActualPath();
     executeNMPC(goal_pose_array);
 }
@@ -312,11 +405,9 @@ void NMPCNavControlROS::executeNMPC(const std::list<NMPCNavControl::Pose>& goal_
     }
 
     try {
-        bool pub_vel, reach_end_traj;
         double cpu_time;
-        mpc_control_->run(robot_pose_, goal_pose_array, robot_vel_ref_, cpu_time, pub_vel, reach_end_traj);
+        bool pub_vel = mpc_control_->run(robot_pose_, goal_pose_array, *robot_vel_ref_, cpu_time);
         if (pub_vel) { pubCmdVel(); }
-        if (reach_end_traj) { current_status_ = Status::Idle; } // TODO: Enable stack up trajectory
         ROS_DEBUG_NAMED("nmpc_solver", "CPU time: %lf ms", cpu_time);
     } catch (const std::exception& e) {
         ROS_ERROR("[%s] Exception caught: %s.", ros::this_node::getName().c_str(), e.what());
@@ -335,4 +426,5 @@ double NMPCNavControlROS::calcDistToEnd()
     }
     return distance_to_end;
 }
+
 } // namespace nmpc_nav_control
