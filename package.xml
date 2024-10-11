@@ -25,8 +25,7 @@
   <depend>itrci_nav</depend>
   <depend>parametric_trajectories_common</depend>
   <depend>Eigen3</depend>
-
-  <depend>python3-yaml</depend>
+  <depend>acados</depend>
 
   <export></export>
 
