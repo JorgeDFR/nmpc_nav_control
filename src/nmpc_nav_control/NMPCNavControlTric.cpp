@@ -10,6 +10,8 @@ NMPCNavControlTric::NMPCNavControlTric(double dt, double dist_front_to_back) : N
     int create_status = tric3amr_acados_create(mpc_capsule_);
     processCreateStatus(create_status);
 
+    robot_steering_wheel_angle_ = 0.0;
+
     for(unsigned int i = 0; i < TRIC3AMR_NX; i++) acados_in_.x0[i] = 0.0;
     for(unsigned int i = 0; i < TRIC3AMR_NU; i++) acados_out_.u0[i] = 0.0;
 }
@@ -22,9 +24,8 @@ bool NMPCNavControlTric::run(const Pose& robot_pose, const std::list<Pose>& traj
     acados_in_.x0[y] = robot_pose.y;
     acados_in_.x0[theta] = robot_pose.theta;
 
-    // TODO: Improve initial estimation of the steering angle
-    // acados_in_.x0[alpha] = ;
-    // acados_in_.x0[alpha_ref] = ;
+    acados_in_.x0[alpha] = robot_steering_wheel_angle_;
+    acados_in_.x0[alpha_ref] = robot_steering_wheel_angle_;
     
     ocp_nlp_constraints_model_set(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims, 
                                   mpc_capsule_->nlp_in, 0, "lbx", acados_in_.x0);

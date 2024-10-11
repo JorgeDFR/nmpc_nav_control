@@ -45,7 +45,7 @@ class NMPCNavControl {
         T* getCommandVelocity(CmdVel& cmd_vel) {
             return dynamic_cast<T*>(&cmd_vel); 
         }
-        
+
     protected:
         void processCreateStatus(const int create_status);
         bool processAcadosStatus(const int acados_status);

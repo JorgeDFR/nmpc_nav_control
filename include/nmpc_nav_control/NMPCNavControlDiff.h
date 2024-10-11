@@ -7,6 +7,8 @@
 
 namespace nmpc_nav_control {
 
+const std::string kDiffStr = "diff";
+
 class NMPCNavControlDiff : public NMPCNavControl {
     public:
         struct CmdVelDiff : public CmdVel {

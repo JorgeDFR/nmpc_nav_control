@@ -38,7 +38,7 @@ def export_diff_amr_model() -> AcadosModel:
     cos_theta = cos(theta)
     sin_theta = sin(theta)
     v  = ( vr + vl )/2.0
-    w  = ( vr - vl )/B
+    w  = ( vr - vl )/DIST_B
 
     # dynamics
     x_dot      = v * cos_theta

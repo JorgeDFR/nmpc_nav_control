@@ -7,6 +7,8 @@
 
 namespace nmpc_nav_control {
 
+const std::string kTricStr = "tric";
+
 class NMPCNavControlTric : public NMPCNavControl {
     public:
         struct CmdVelTric : public CmdVel {
@@ -39,12 +41,17 @@ class NMPCNavControlTric : public NMPCNavControl {
 
         // Other variables
         double dist_front_to_back_;
+        double robot_steering_wheel_angle_;
 
     public:
         NMPCNavControlTric(double dt, double dist_back_to_front);
         ~NMPCNavControlTric() = default;
 
         double getHorizon() override { return TRIC3AMR_N; }
+
+        void setSteeringWheelAngle(double robot_steering_wheel_angle) { 
+            robot_steering_wheel_angle_ = robot_steering_wheel_angle;
+        }
 
         bool run(const Pose& robot_pose, const std::list<Pose>& traj_ref, 
                  CmdVel& robot_vel_ref, double& cpu_time) override;

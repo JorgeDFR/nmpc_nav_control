@@ -7,6 +7,8 @@
 
 namespace nmpc_nav_control {
 
+const std::string kOmni4Str = "omni4";
+
 class NMPCNavControlOmni4 : public NMPCNavControl {
     public:
         struct CmdVelOmni4 : public CmdVel {
