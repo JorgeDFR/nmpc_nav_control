@@ -1,8 +1,7 @@
 from acados_template import AcadosModel
 from casadi import SX, vertcat, sin, cos
-from common import *
 
-def export_omni4_amr_model() -> AcadosModel:
+def export_omni4_amr_model(TAU_V, L1_PLUS_L2) -> AcadosModel:
     model_name = 'omni4amr'
 
     # states

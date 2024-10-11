@@ -1,8 +1,7 @@
 from acados_template import AcadosModel
 from casadi import SX, vertcat, sin, cos
-from common import *
 
-def export_tric_amr_model() -> AcadosModel:
+def export_tric_amr_model(TAU_V, TAU_A, DIST_D) -> AcadosModel:
     model_name = 'tric3amr'
 
     # states

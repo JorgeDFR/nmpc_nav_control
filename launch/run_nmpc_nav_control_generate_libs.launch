@@ -1,0 +1,4 @@
+<launch>
+  <node pkg="nmpc_nav_control" type="generate_acados_libs.py" name="generate_acados_libs" output="screen"
+        args="$(find nmpc_nav_control)/config/nmpc_nav_control_acados_models.yaml"/>
+</launch>

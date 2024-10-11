@@ -1,8 +1,7 @@
 from acados_template import AcadosModel
 from casadi import SX, vertcat, sin, cos
-from common import *
 
-def export_diff_amr_model() -> AcadosModel:
+def export_diff_amr_model(TAU_V, DIST_B) -> AcadosModel:
     model_name = 'diff2amr'
 
     # states

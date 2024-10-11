@@ -19,6 +19,7 @@ endif()
 # Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS
   roscpp
+  rospy
   tf2
   tf2_ros
   geometry_msgs
@@ -44,6 +45,7 @@ catkin_package(
   LIBRARIES ${PROJECT_NAME}
   CATKIN_DEPENDS
     roscpp
+    rospy
     tf2
     tf2_ros
     geometry_msgs

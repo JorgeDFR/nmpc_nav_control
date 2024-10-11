@@ -1,16 +1,18 @@
 import numpy as np
 from acados_template import AcadosOcp, AcadosOcpSolver
-from omni4_amr_model import export_omni4_amr_model
+from .common import load_parameters
+from .omni4_amr_model import export_omni4_amr_model
 from casadi import vertcat
 from scipy.linalg import block_diag
-from common import *
 
-def main():
+def main(params):
+    (N, TF, Q, R, QN, TAU_V, L1_PLUS_L2, V_MAX, A_MAX) = load_parameters(params)
+
     # create ocp object to formulate the OCP
     ocp = AcadosOcp()
 
     # set model
-    model = export_omni4_amr_model()
+    model = export_omni4_amr_model(TAU_V, L1_PLUS_L2)
     ocp.model = model
 
     nx = model.x.rows()
@@ -31,7 +33,7 @@ def main():
     ocp.cost.cost_type_e = 'NONLINEAR_LS'
     ocp.model.cost_y_expr_e = model.x
     ocp.cost.yref_e = np.zeros((nx,))
-    ocp.cost.W_e = Q
+    ocp.cost.W_e = QN
 
     # the 'EXTERNAL' cost type can be used to define general cost terms
     # NOTE: This leads to additional (exact) hessian contributions when using GAUSS_NEWTON hessian.
@@ -68,13 +70,10 @@ def main():
     ocp.solver_options.print_level = 0
 
     solver_json = 'acados_ocp_' + model.name + '.json'
-    ocp_solver = AcadosOcpSolver(ocp, json_file = solver_json)
+    ocp_solver = AcadosOcpSolver(ocp, json_file = solver_json, verbose=False)
 
     status = ocp_solver.solve()
     ocp_solver.print_statistics() # encapsulates: stat = ocp_solver.get_stats("statistics")
 
     if status != 0:
         raise Exception(f'acados returned status {status}.')
-
-if __name__ == '__main__':
-    main()
