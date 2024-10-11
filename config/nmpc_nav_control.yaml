@@ -1,12 +1,15 @@
 global_frame_id: 'map'
 base_frame_id: 'base_footprint'
+steering_wheel_frame_id: 'direction_wheel' # only for tricycle robots
 
-control_freq: 40                          # Hz
-transform_timeout: 0.1                    # seconds
-max_active_path_length: 5.0               # meters
+control_freq: 40                           # Hz
+transform_timeout: 0.1                     # seconds
+max_active_path_length: 5.0                # meters
+final_position_error: 0.001                # meters
+final_orientation_error: 1.0               # degrees
 
-steering_geometry: omni4                  # can be omni4, diff or tric
-rob_dist_between_front_back_wh: 0.265     # meters (for omni4)
-rob_dist_between_left_right_wh: 0.270     # meters (for omni4)
-rob_dist_between_wh: 0.265                # meters (for diff)
-rob_dist_between_steering_back_wh: 0.270  # meters (for tric)
+steering_geometry: omni4                   # can be omni4, diff or tric
+rob_dist_between_front_back_wh: 0.265      # meters (for omni4)
+rob_dist_between_left_right_wh: 0.270      # meters (for omni4)
+rob_dist_between_wh: 0.265                 # meters (for diff)
+rob_dist_between_steering_back_wh: 0.270   # meters (for tric)
