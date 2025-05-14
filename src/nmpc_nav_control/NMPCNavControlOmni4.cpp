@@ -23,9 +23,11 @@ bool NMPCNavControlOmni4::run(const Pose& robot_pose, const std::list<Pose>& tra
     acados_in_.x0[theta] = robot_pose.theta;
     
     ocp_nlp_constraints_model_set(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims, 
-                                  mpc_capsule_->nlp_in, 0, "lbx", acados_in_.x0);
+                                  mpc_capsule_->nlp_in, mpc_capsule_->nlp_out,
+                                  0, "lbx", acados_in_.x0);
     ocp_nlp_constraints_model_set(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims, 
-                                  mpc_capsule_->nlp_in, 0, "ubx", acados_in_.x0);
+                                  mpc_capsule_->nlp_in, mpc_capsule_->nlp_out,
+                                  0, "ubx", acados_in_.x0);
     
     // Unwrap reference angles
     double previous_theta = robot_pose.theta;
@@ -57,7 +59,7 @@ bool NMPCNavControlOmni4::run(const Pose& robot_pose, const std::list<Pose>& tra
     acados_out_.status = acados_status;
     acados_out_.kkt_res = (double)mpc_capsule_->nlp_out->inf_norm_res;
 
-    ocp_nlp_get(mpc_capsule_->nlp_config, mpc_capsule_->nlp_solver, "time_tot", &acados_out_.cpu_time);
+    ocp_nlp_get(mpc_capsule_->nlp_solver, "time_tot", &acados_out_.cpu_time);
     cpu_time = acados_out_.cpu_time*1000;
 
     ocp_nlp_out_get(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims, 

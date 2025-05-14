@@ -9,9 +9,7 @@ set(ACADOS_INCLUDE_SEARCH_PATHS
   "/usr/include"
   "/usr/local/include"
   "/opt/acados/include"
-  "$ENV{ACADOS_HOME}"
   "$ENV{ACADOS_HOME}/include"
-  "$ENV{ACADOS_SOURCE_DIR}"
   "$ENV{ACADOS_SOURCE_DIR}/include"
 )
 
@@ -35,11 +33,11 @@ if(ACADOS_LIB AND ACADOS_INCLUDE_DIR_BASE)
 
     # Set the directories based on your structure
     set(ACADOS_INCLUDE_DIRS 
-        ${ACADOS_INCLUDE_DIR_BASE}
-        ${ACADOS_INCLUDE_DIR_BASE}/acados
-        ${ACADOS_INCLUDE_DIR_BASE}/blasfeo/include
-        ${ACADOS_INCLUDE_DIR_BASE}/hpipm/include
-        ${ACADOS_INCLUDE_DIR_BASE}/qpOASES_e
+        ${ACADOS_INCLUDE_DIR_BASE}/include
+        ${ACADOS_INCLUDE_DIR_BASE}/include/acados
+        ${ACADOS_INCLUDE_DIR_BASE}/include/blasfeo/include
+        ${ACADOS_INCLUDE_DIR_BASE}/include/hpipm/include
+        ${ACADOS_INCLUDE_DIR_BASE}/include/qpOASES_e
     )
     set(ACADOS_LIBRARIES ${ACADOS_LIB})
 else()
@@ -48,11 +46,11 @@ endif()
 
 # Provide a message for debugging
 if(ACADOS_FOUND)
-    message(STATUS "Found acados: ${ACADOS_LIBRARY}")
-    message(STATUS "acados include dir: ${ACADOS_INCLUDE_DIR}")
+    message(STATUS "Found acados: ${ACADOS_LIBRARIES}")
+    message(STATUS "acados include directories: ${ACADOS_INCLUDE_DIRS}")
 else()
     message(WARNING "acados not found")
 endif()
 
 # Make the library importable by CMake
-mark_as_advanced(ACADOS_LIBRARY ACADOS_INCLUDE_DIR)
+mark_as_advanced(ACADOS_LIBRARIES ACADOS_INCLUDE_DIRS)

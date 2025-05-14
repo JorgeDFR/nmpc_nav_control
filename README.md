@@ -96,8 +96,8 @@ cd ~/catkin_ws/src
 git clone https://github.com/Thorfr123/nmpc_nav_control
 
 # Generate acados solvers libraries
-cd ~/catkin_ws/src/nmpc_nav_control/scripts
-roscore & sleep 5 && python3 scripts/generate_acados_libs.py config/nmpc_nav_control_acados_models.yaml
+cd ~/catkin_ws/src/nmpc_nav_control
+python3 scripts/generate_acados_libs.py config/nmpc_nav_control_acados_models.yaml
 
 # Build
 cd ~/catkin_ws

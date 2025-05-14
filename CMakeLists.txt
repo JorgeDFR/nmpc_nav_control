@@ -32,7 +32,7 @@ find_package(Eigen3 REQUIRED)
 
 # Add the cmake/ directory to CMake's module search path
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-find_package(acados REQUIRED)
+find_package(ACADOS REQUIRED)
 
 # Acados installation path and c_generated code path
 set(omni4amr_model ${PROJECT_SOURCE_DIR}/scripts/omni4/c_generated_code)
@@ -52,7 +52,7 @@ catkin_package(
     itrci_nav
     parametric_trajectories_common
   DEPENDS 
-    EIGEN3
+    Eigen3
     ACADOS
 )
 
@@ -61,11 +61,10 @@ catkin_package(
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
-  ${EIGEN3_INCLUDE_DIRS}
   ${ACADOS_INCLUDE_DIRS}
   ${omni4amr_model}
   ${diff2amr_model} 
-  ${tric3amr_model} 
+  ${tric3amr_model}
 )
 link_directories(${omni4amr_model})
 link_directories(${diff2amr_model})
@@ -106,7 +105,7 @@ add_dependencies(${PROJECT_NAME}
 # - specify linking libraries
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
-  ${EIGEN3_LIBRARIES}
+  Eigen3::Eigen
   ${ACADOS_LIBRARIES}
   ${omni4amr_model}/libacados_ocp_solver_omni4amr.so
   ${diff2amr_model}/libacados_ocp_solver_diff2amr.so
