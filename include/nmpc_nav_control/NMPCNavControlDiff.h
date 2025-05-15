@@ -18,7 +18,7 @@ class NMPCNavControlDiff : public NMPCNavControl {
     private:
         enum SystemStates {
             x = 0, y = 1, theta = 2,
-            vl = 3, vr = 4, 
+            vl = 3, vr = 4,
             vl_ref = 5, vr_ref = 6
         };
         enum ControlInputs {

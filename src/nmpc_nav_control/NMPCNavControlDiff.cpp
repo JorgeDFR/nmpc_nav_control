@@ -70,7 +70,7 @@ bool NMPCNavControlDiff::run(const Pose& robot_pose, const std::list<Pose>& traj
     new_vl_ref = acados_in_.x0[vl_ref] + acados_out_.u0[dvl_ref]*dt_;
     new_vr_ref = acados_in_.x0[vr_ref] + acados_out_.u0[dvr_ref]*dt_;
 
-    // Cast CmdVel to CmdVelOmni4
+    // Cast CmdVel to CmdVelDiff
     CmdVelDiff* cmd_vel_diff = getCommandVelocity<CmdVelDiff>(robot_vel_ref);
     if (!cmd_vel_diff) { 
         throw std::runtime_error("Invalid command velocity type passed to run method.");

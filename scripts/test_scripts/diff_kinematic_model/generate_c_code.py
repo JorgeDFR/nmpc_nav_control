@@ -6,13 +6,13 @@ from casadi import vertcat
 from scipy.linalg import block_diag
 
 def main(params):
-    (N, TF, Q, R, QN, TAU_V, DIST_B, V_MAX, A_MAX) = load_parameters(params)
+    (N, TF, Q, R, QN, DIST_B, V_MAX, A_MAX) = load_parameters(params)
 
     # create ocp object to formulate the OCP
     ocp = AcadosOcp()
 
     # set model
-    model = export_diff_amr_model(TAU_V, DIST_B)
+    model = export_diff_amr_model(DIST_B)
     ocp.model = model
 
     nx = model.x.rows()
@@ -39,31 +39,30 @@ def main(params):
     # NOTE: This leads to additional (exact) hessian contributions when using GAUSS_NEWTON hessian.
     
     # set constraints
-    ocp.constraints.lbx = np.array([-V_MAX, -V_MAX])
-    ocp.constraints.ubx = np.array([ V_MAX,  V_MAX])
-    ocp.constraints.idxbx = np.array([5, 6])
+    ocp.constraints.lbx   = np.array([-V_MAX, -V_MAX])
+    ocp.constraints.ubx   = np.array([ V_MAX,  V_MAX])
+    ocp.constraints.idxbx = np.array([3, 4])
 
-    ocp.constraints.lbu = np.array([-A_MAX, -A_MAX])
-    ocp.constraints.ubu = np.array([ A_MAX,  A_MAX])
+    ocp.constraints.lbu   = np.array([-A_MAX, -A_MAX])
+    ocp.constraints.ubu   = np.array([ A_MAX,  A_MAX])
     ocp.constraints.idxbu = np.array([0, 1])
     
     # initial state (will be overwritten later)
-    ocp.constraints.x0 = np.array([0.0, 0.0, np.pi, 
-                                   0.0, 0.0,
-                                   0.0, 0.0])
+    ocp.constraints.x0    = np.array([0.0, 0.0, np.pi, 
+                                      0.0, 0.0])
 
     # reference trajectory (will be overwritten later)
     x_ref = np.zeros(nx)
     u_ref = np.zeros(nu)
-    ocp.cost.yref = np.concatenate((x_ref, u_ref))
+    ocp.cost.yref   = np.concatenate((x_ref, u_ref))
     ocp.cost.yref_e = x_ref
 
     # set options
     ocp.solver_options.qp_solver = 'PARTIAL_CONDENSING_HPIPM'
     # PARTIAL_CONDENSING_HPIPM, FULL_CONDENSING_QPOASES, FULL_CONDENSING_HPIPM,
     # PARTIAL_CONDENSING_QPDUNES, PARTIAL_CONDENSING_OSQP, FULL_CONDENSING_DAQP
-    ocp.solver_options.hessian_approx = 'EXACT' # 'GAUSS_NEWTON', 'EXACT'
-    ocp.solver_options.integrator_type = 'IRK' # IRK, ERK
+    ocp.solver_options.hessian_approx  = 'GAUSS_NEWTON' # 'GAUSS_NEWTON', 'EXACT'
+    ocp.solver_options.integrator_type = 'ERK' # IRK, ERK
     ocp.solver_options.nlp_solver_type = 'SQP_RTI' # SQP_RTI (Real Time Iteration), SQP
 
     solver_json = 'acados_ocp_' + model.name + '.json'

@@ -11,5 +11,5 @@ final_orientation_error: 1.0               # degrees
 steering_geometry: omni4                   # can be omni4, diff or tric
 rob_dist_between_front_back_wh: 0.265      # meters (for omni4)
 rob_dist_between_left_right_wh: 0.270      # meters (for omni4)
-rob_dist_between_wh: 0.265                 # meters (for diff)
+rob_dist_between_wh: 0.270                 # meters (for diff)
 rob_dist_between_steering_back_wh: 0.270   # meters (for tric)
