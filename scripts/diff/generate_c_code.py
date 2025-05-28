@@ -18,7 +18,7 @@ def main(params):
     nx = model.x.rows()
     nu = model.u.rows()
     ny = nx + nu  # y is x and u concatenated for compactness of the loss function
-    
+
     # set prediction horizon
     ocp.solver_options.tf = TF
     ocp.solver_options.N_horizon = N
@@ -37,7 +37,7 @@ def main(params):
 
     # the 'EXTERNAL' cost type can be used to define general cost terms
     # NOTE: This leads to additional (exact) hessian contributions when using GAUSS_NEWTON hessian.
-    
+
     # set constraints
     ocp.constraints.lbx = np.array([-V_MAX, -V_MAX])
     ocp.constraints.ubx = np.array([ V_MAX,  V_MAX])
@@ -46,9 +46,9 @@ def main(params):
     ocp.constraints.lbu = np.array([-A_MAX, -A_MAX])
     ocp.constraints.ubu = np.array([ A_MAX,  A_MAX])
     ocp.constraints.idxbu = np.array([0, 1])
-    
+
     # initial state (will be overwritten later)
-    ocp.constraints.x0 = np.array([0.0, 0.0, np.pi, 
+    ocp.constraints.x0 = np.array([0.0, 0.0, np.pi,
                                    0.0, 0.0,
                                    0.0, 0.0])
 

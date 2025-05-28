@@ -4,7 +4,7 @@ import numpy as np
 def load_parameters(params):
     tf_ini = params['tf_ini']
     freq = params['freq']
-    dt = 1.0 / freq                       
+    dt = 1.0 / freq
     N = int(np.ceil(tf_ini / dt))
     TF = N * dt
 
@@ -12,7 +12,7 @@ def load_parameters(params):
     R = np.diag(params['R'])
     QN = np.diag(params['QN'])
 
-    TAU_V = params['tau_v']                           
+    TAU_V = params['tau_v']
     DIST_B = params['dist_b']
 
     V_MAX = params['v_max']

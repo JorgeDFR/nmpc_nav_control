@@ -33,7 +33,7 @@ class NMPCNavControlDiff : public NMPCNavControl {
             double x1[DIFF2AMR_NX];
             double status, kkt_res, cpu_time;
         };
-        
+
         // Acados variables
         SolverInput acados_in_;
         SolverOutput acados_out_;
@@ -42,13 +42,16 @@ class NMPCNavControlDiff : public NMPCNavControl {
         // Other variables
         double dist_left_to_right_;
 
+        double first_cycle;
+        double x_last, y_last, theta_last;
+
     public:
         NMPCNavControlDiff(double dt, double dist_left_to_right);
         ~NMPCNavControlDiff() = default;
 
         double getHorizon() override { return DIFF2AMR_N; }
 
-        bool run(const Pose& robot_pose, const std::list<Pose>& traj_ref, 
+        bool run(const Pose& robot_pose, const std::list<Pose>& traj_ref,
                  CmdVel& robot_vel_ref, double& cpu_time) override;
 
     private:

@@ -17,8 +17,8 @@ def export_diff_amr_model(TAU_V, DIST_B) -> AcadosModel:
                     vl_ref, vr_ref)
 
     # controls
-    dvl_ref = SX.sym('dv1_ref') # variation of the reference linear velocity left wheel
-    dvr_ref = SX.sym('dv2_ref') # variation of the reference linear velocity right wheel
+    dvl_ref = SX.sym('dvl_ref') # variation of the reference linear velocity left wheel
+    dvr_ref = SX.sym('dvr_ref') # variation of the reference linear velocity right wheel
     sym_u = vertcat(dvl_ref, dvr_ref)
 
     # xdot for f_impl
@@ -43,16 +43,18 @@ def export_diff_amr_model(TAU_V, DIST_B) -> AcadosModel:
     x_dot      = v * cos_theta
     y_dot      = v * sin_theta
     theta_dot  = w
+    vl_dot     = dvl_ref
+    vr_dot     = dvr_ref
     vl_dot     = -1.0/TAU_V * vl + 1.0/TAU_V * vl_ref
     vr_dot     = -1.0/TAU_V * vr + 1.0/TAU_V * vr_ref
     vl_ref_dot = dvl_ref
     vr_ref_dot = dvr_ref
 
-    f_expl = vertcat(x_dot, y_dot, theta_dot, 
+    f_expl = vertcat(x_dot, y_dot, theta_dot,
                      vl_dot, vr_dot,
                      vl_ref_dot, vr_ref_dot)
     f_impl = sym_xdot - f_expl
-    
+
     # model
     model = AcadosModel()
     model.name = model_name
@@ -63,7 +65,7 @@ def export_diff_amr_model(TAU_V, DIST_B) -> AcadosModel:
     model.u = sym_u
 
     # store meta information
-    model.x_labels = ['$x$ [m]', '$y$ [m]', r'$\theta$ [rad]', 
+    model.x_labels = ['$x$ [m]', '$y$ [m]', r'$\theta$ [rad]',
                       '$vl$ [m/s]', '$vr$ [m/s]',
                       '$vl_{ref}$ [m/s]', '$vr_{ref}$ [m/s]']
     model.u_labels = ['$dvl_{ref}$ [m/s]', '$dvr_{ref}$ [m/s]']
