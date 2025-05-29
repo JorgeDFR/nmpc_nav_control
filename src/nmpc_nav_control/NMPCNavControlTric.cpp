@@ -2,7 +2,7 @@
 
 namespace nmpc_nav_control {
 
-NMPCNavControlTric::NMPCNavControlTric(double dt, double dist_front_to_back) : NMPCNavControl(dt), 
+NMPCNavControlTric::NMPCNavControlTric(double dt, double dist_front_to_back) : NMPCNavControl(dt),
                                                           dist_front_to_back_(dist_front_to_back)
 {
     // Initialize MPC
@@ -16,7 +16,8 @@ NMPCNavControlTric::NMPCNavControlTric(double dt, double dist_front_to_back) : N
     for(unsigned int i = 0; i < TRIC3AMR_NU; i++) acados_out_.u0[i] = 0.0;
 }
 
-bool NMPCNavControlTric::run(const Pose& robot_pose, const std::list<Pose>& traj_ref, 
+bool NMPCNavControlTric::run(const Pose& robot_pose,  const Vel& robot_vel,
+                             const std::list<Pose>& traj_ref,
                              CmdVel& robot_vel_ref, double& cpu_time)
 {
     // Set initial state
@@ -26,14 +27,14 @@ bool NMPCNavControlTric::run(const Pose& robot_pose, const std::list<Pose>& traj
 
     acados_in_.x0[alpha] = robot_steering_wheel_angle_;
     acados_in_.x0[alpha_ref] = robot_steering_wheel_angle_;
-    
-    ocp_nlp_constraints_model_set(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims, 
-                                  mpc_capsule_->nlp_in, mpc_capsule_->nlp_out, 
+
+    ocp_nlp_constraints_model_set(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims,
+                                  mpc_capsule_->nlp_in, mpc_capsule_->nlp_out,
                                   0, "lbx", acados_in_.x0);
-    ocp_nlp_constraints_model_set(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims, 
-                                  mpc_capsule_->nlp_in, mpc_capsule_->nlp_out, 
+    ocp_nlp_constraints_model_set(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims,
+                                  mpc_capsule_->nlp_in, mpc_capsule_->nlp_out,
                                   0, "ubx", acados_in_.x0);
-    
+
     // Unwrap reference angles
     double previous_theta = robot_pose.theta;
     auto it = traj_ref.begin();
@@ -52,8 +53,8 @@ bool NMPCNavControlTric::run(const Pose& robot_pose, const std::list<Pose>& traj
     }
 
     // Set reference trajectory
-    for (unsigned int i = 0; i <= TRIC3AMR_N; i++) {            
-        ocp_nlp_cost_model_set(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims, 
+    for (unsigned int i = 0; i <= TRIC3AMR_N; i++) {
+        ocp_nlp_cost_model_set(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims,
                                mpc_capsule_->nlp_in, i, "yref", acados_in_.yref[i]);
     }
 
@@ -67,7 +68,7 @@ bool NMPCNavControlTric::run(const Pose& robot_pose, const std::list<Pose>& traj
     ocp_nlp_get(mpc_capsule_->nlp_solver, "time_tot", &acados_out_.cpu_time);
     cpu_time = acados_out_.cpu_time*1000;
 
-    ocp_nlp_out_get(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims, 
+    ocp_nlp_out_get(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims,
                     mpc_capsule_->nlp_out, 0, "u", (void*)acados_out_.u0);
 
     // Get reference velocities for the robot
@@ -77,7 +78,7 @@ bool NMPCNavControlTric::run(const Pose& robot_pose, const std::list<Pose>& traj
 
     // Cast CmdVel to CmdVelTric
     CmdVelTric* cmd_vel_tric = getCommandVelocity<CmdVelTric>(robot_vel_ref);
-    if (!cmd_vel_tric) { 
+    if (!cmd_vel_tric) {
         throw std::runtime_error("Invalid command velocity type passed to run method.");
         return false;
     }
@@ -85,10 +86,10 @@ bool NMPCNavControlTric::run(const Pose& robot_pose, const std::list<Pose>& traj
     cmd_vel_tric->alpha = new_alpha_ref;
 
     // Setup next cycle initial state
-    ocp_nlp_out_get(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims, 
+    ocp_nlp_out_get(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims,
                     mpc_capsule_->nlp_out, 1, "x", (void*)acados_in_.x0);
 
     return true;
-} 
+}
 
 } // namespace nmpc_nav_control

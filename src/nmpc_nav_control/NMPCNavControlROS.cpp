@@ -234,7 +234,19 @@ bool NMPCNavControlROS::getRobotPose(const std::string& global_frame_id, ros::Ti
 
         robot_pose_.x = robot_pose.transform.translation.x;
         robot_pose_.y = robot_pose.transform.translation.y;
-        robot_pose_.theta = tf2::getYaw(robot_pose.transform.rotation);
+        // robot_pose_.theta = tf2::getYaw(robot_pose.transform.rotation);
+
+        // Hack: Bug fix for the angle wrap in acados solver
+        double last_theta = robot_pose_.theta;
+        double curr_theta = tf2::getYaw(robot_pose.transform.rotation);
+
+        double delta = curr_theta - last_theta;
+        if (delta > M_PI) { curr_theta -= 2.0 * M_PI; }
+        else if (delta < -M_PI) { curr_theta += 2.0 * M_PI; }
+
+        while (curr_theta >= 2.0 * M_PI) { curr_theta -= 2.0 * M_PI; }
+        while (curr_theta <= -2.0 * M_PI) { curr_theta += 2.0 * M_PI; }
+        robot_pose_.theta = curr_theta;
 
         ros::Duration delta_time = current_time - time_stamp;
         if (delta_time.toSec() > transform_timeout_) {
@@ -246,6 +258,54 @@ bool NMPCNavControlROS::getRobotPose(const std::string& global_frame_id, ros::Ti
         ROS_ERROR("[%s] %s", ros::this_node::getName().c_str(), ex.what());
         return false;
     }
+    return true;
+}
+
+bool NMPCNavControlROS::getRobotVel(const std::string& global_frame_id, const ros::Time& time_stamp)
+{
+    try {
+        ros::Duration delta(1.0/control_freq_);
+        ros::Time t1 = time_stamp - delta;
+        ros::Time t2 = time_stamp;
+
+        geometry_msgs::TransformStamped tf1 = tf_buffer_->lookupTransform(global_frame_id, base_frame_id_, t1);
+        geometry_msgs::TransformStamped tf2 = tf_buffer_->lookupTransform(global_frame_id, base_frame_id_, t2);
+
+        double dt = (tf2.header.stamp - tf1.header.stamp).toSec();
+        if (dt <= 0.0 || dt > transform_timeout_) {
+            ROS_WARN("[%s] Velocity calculation skipped due to large or invalid delta time: %f s",
+            ros::this_node::getName().c_str(), dt);
+            return false;
+        }
+
+        // Delta position in global frame
+        double dx = tf2.transform.translation.x - tf1.transform.translation.x;
+        double dy = tf2.transform.translation.y - tf1.transform.translation.y;
+
+        // Orientation difference (yaw)
+        double yaw1 = tf2::getYaw(tf1.transform.rotation);
+        double yaw2 = tf2::getYaw(tf2.transform.rotation);
+        double dyaw = normAngRad(yaw2 - yaw1);
+
+        // Midpoint orientation for rotation into robot frame
+        double mid_yaw = yaw1 + dyaw / 2.0;
+
+        // Rotate global velocity into robot frame
+        double vx_global = dx / dt;
+        double vy_global = dy / dt;
+
+        double cos_yaw = std::cos(-mid_yaw); // negative for inverse rotation
+        double sin_yaw = std::sin(-mid_yaw);
+
+        robot_vel_.v  = vx_global * cos_yaw - vy_global * sin_yaw; // forward velocity
+        robot_vel_.vn = vx_global * sin_yaw + vy_global * cos_yaw; // lateral velocity
+        robot_vel_.w  = dyaw / dt;                                 // angular velocity
+
+    } catch (tf2::TransformException &ex) {
+        ROS_WARN("[%s] Could not calculate velocity: %s", ros::this_node::getName().c_str(), ex.what());
+        return false;
+    }
+
     return true;
 }
 
@@ -270,7 +330,6 @@ bool NMPCNavControlROS::getSteeringWheelAngle(const ros::Time &time_stamp)
     }
     return true;
 }
-
 
 void NMPCNavControlROS::mainTimerCallBack(const ros::TimerEvent&)
 {
@@ -314,6 +373,7 @@ void NMPCNavControlROS::getInputData(const std::string& global_frame_id)
     bool valid_data;
     ros::Time time_stamp;
     valid_data = getRobotPose(global_frame_id, time_stamp);
+    valid_data = getRobotVel(global_frame_id, time_stamp);
     if (steering_geometry_ == kTricStr) {
         valid_data &= getSteeringWheelAngle(time_stamp);
     }
@@ -410,7 +470,7 @@ void NMPCNavControlROS::processFollowPath()
     processNearestPoint();
     processPathBuffers(active_path_u_);
 
-    PathDiscretizer pathDiscretizer(mpc_control_->getDeltaTime(), mpc_control_->getHorizon(), false);
+    PathDiscretizer pathDiscretizer(mpc_control_->getDeltaTime(), mpc_control_->getHorizon()+1, false);
     std::vector<PathDiscretizer::Pose> next_poses;
     pathDiscretizer.getNextNPoses(active_path_, active_path_u_, next_poses);
 
@@ -455,7 +515,7 @@ void NMPCNavControlROS::executeNMPC(const std::list<NMPCNavControl::Pose>& goal_
             tric_control->setSteeringWheelAngle(robot_steering_wheel_angle_);
         }
         double cpu_time;
-        bool pub_vel = mpc_control_->run(robot_pose_, goal_pose_array, *robot_vel_ref_, cpu_time);
+        bool pub_vel = mpc_control_->run(robot_pose_, robot_vel_, goal_pose_array, *robot_vel_ref_, cpu_time);
         if (pub_vel) { pubCmdVel(); }
         ROS_DEBUG_NAMED("nmpc_solver", "CPU time: %lf ms", cpu_time);
     } catch (const std::exception& e) {

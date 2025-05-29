@@ -18,7 +18,7 @@ class NMPCNavControlTric : public NMPCNavControl {
     private:
         enum SystemStates {
             x = 0, y = 1, theta = 2,
-            v = 3, alpha = 4, 
+            v = 3, alpha = 4,
             v_ref = 5, alpha_ref = 6
         };
         enum ControlInputs {
@@ -33,7 +33,7 @@ class NMPCNavControlTric : public NMPCNavControl {
             double x1[TRIC3AMR_NX];
             double status, kkt_res, cpu_time;
         };
-        
+
         // Acados variables
         SolverInput acados_in_;
         SolverOutput acados_out_;
@@ -49,11 +49,12 @@ class NMPCNavControlTric : public NMPCNavControl {
 
         double getHorizon() override { return TRIC3AMR_N; }
 
-        void setSteeringWheelAngle(double robot_steering_wheel_angle) { 
+        void setSteeringWheelAngle(double robot_steering_wheel_angle) {
             robot_steering_wheel_angle_ = robot_steering_wheel_angle;
         }
 
-        bool run(const Pose& robot_pose, const std::list<Pose>& traj_ref, 
+        bool run(const Pose& robot_pose, const Vel& robot_vel,
+                 const std::list<Pose>& traj_ref,
                  CmdVel& robot_vel_ref, double& cpu_time) override;
 
 };

@@ -1,5 +1,6 @@
 #include "nmpc_nav_control/NMPCNavControlDiff.h"
 #include "nmpc_nav_control/utils.h"
+
 namespace nmpc_nav_control {
 
 NMPCNavControlDiff::NMPCNavControlDiff(double dt, double dist_left_to_right) : NMPCNavControl(dt),
@@ -17,7 +18,8 @@ NMPCNavControlDiff::NMPCNavControlDiff(double dt, double dist_left_to_right) : N
     x_last = y_last = theta_last = 0.0;
 }
 
-bool NMPCNavControlDiff::run(const Pose& robot_pose, const std::list<Pose>& traj_ref,
+bool NMPCNavControlDiff::run(const Pose& robot_pose, const Vel& robot_vel,
+                             const std::list<Pose>& traj_ref,
                              CmdVel& robot_vel_ref, double& cpu_time)
 {
     // Set initial state
@@ -25,26 +27,31 @@ bool NMPCNavControlDiff::run(const Pose& robot_pose, const std::list<Pose>& traj
     acados_in_.x0[y] = robot_pose.y;
     acados_in_.x0[theta] = robot_pose.theta;
 
-    // ################################### TEMP (Debug) ###################################
-    double v, w;
-    if (first_cycle) {
-        v = 0.0;
-        w = 0.0;
-        first_cycle = false;
-    } else {
-        double vx = (robot_pose.x - x_last) / dt_;
-        double vy = (robot_pose.y - y_last) / dt_;
-        v = vx * cos(robot_pose.theta) + vy * sin(robot_pose.theta);
-        w = normAngRad(theta_last - robot_pose.theta) / dt_;
-    }
-    x_last = robot_pose.x;
-    y_last = robot_pose.y;
-    theta_last = robot_pose.theta;
-
     double vl_est, vr_est;
-    directKinematrics(v, w, vl_est, vr_est);
-    std::cout << "vl: "    << acados_in_.x0[vl] << " | vl_est: " << vl_est << std::endl
-              << " | vr: " << acados_in_.x0[vr] << " | vr_est: " << vr_est << std::endl;
+    directKinematrics(robot_vel.v, robot_vel.w, vl_est, vr_est);
+    acados_in_.x0[vl] = vl_est;
+    acados_in_.x0[vr] = vr_est;
+
+    // ################################### TEMP (Debug) ###################################
+    // double v, w;
+    // if (first_cycle) {
+    //     v = 0.0;
+    //     w = 0.0;
+    //     first_cycle = false;
+    // } else {
+    //     double vx = (robot_pose.x - x_last) / dt_;
+    //     double vy = (robot_pose.y - y_last) / dt_;
+    //     v = vx * cos(robot_pose.theta) + vy * sin(robot_pose.theta);
+    //     w = normAngRad(theta_last - robot_pose.theta) / dt_;
+    // }
+    // x_last = robot_pose.x;
+    // y_last = robot_pose.y;
+    // theta_last = robot_pose.theta;
+
+    // double vl_est, vr_est;
+    // directKinematrics(v, w, vl_est, vr_est);
+    // std::cout << "vl: "    << acados_in_.x0[vl] << " | vl_est: " << vl_est << std::endl
+    //           << " | vr: " << acados_in_.x0[vr] << " | vr_est: " << vr_est << std::endl;
     // ####################################################################################
 
     ocp_nlp_constraints_model_set(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims,
@@ -106,6 +113,9 @@ bool NMPCNavControlDiff::run(const Pose& robot_pose, const std::list<Pose>& traj
     // Setup next cycle initial state
     ocp_nlp_out_get(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims,
                     mpc_capsule_->nlp_out, 1, "x", (void*)acados_in_.x0);
+
+    acados_in_.x0[vl_ref] = new_vl_ref;
+    acados_in_.x0[vr_ref] = new_vr_ref;
 
     return true;
 }

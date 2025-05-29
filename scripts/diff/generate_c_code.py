@@ -62,8 +62,8 @@ def main(params):
     ocp.solver_options.qp_solver = 'PARTIAL_CONDENSING_HPIPM'
     # PARTIAL_CONDENSING_HPIPM, FULL_CONDENSING_QPOASES, FULL_CONDENSING_HPIPM,
     # PARTIAL_CONDENSING_QPDUNES, PARTIAL_CONDENSING_OSQP, FULL_CONDENSING_DAQP
-    ocp.solver_options.hessian_approx = 'EXACT' # 'GAUSS_NEWTON', 'EXACT'
-    ocp.solver_options.integrator_type = 'IRK' # IRK, ERK
+    ocp.solver_options.hessian_approx = 'GAUSS_NEWTON' # 'GAUSS_NEWTON', 'EXACT'
+    ocp.solver_options.integrator_type = 'ERK' # IRK, ERK
     ocp.solver_options.nlp_solver_type = 'SQP_RTI' # SQP_RTI (Real Time Iteration), SQP
 
     solver_json = 'acados_ocp_' + model.name + '.json'

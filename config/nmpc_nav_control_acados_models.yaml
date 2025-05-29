@@ -28,7 +28,7 @@ diff_params:
 
   tau_v: 0.1                # [s] robot wheels velocity time constant
   dist_b: 0.270             # [m] distance between left and right wheels
-  v_max: 1.0                # [m/s] max linear velocity
+  v_max: 3.0                # [m/s] max linear velocity
   a_max: 2.0                # [m/s^2] max acceleration
 
                             # Path cost: state weights

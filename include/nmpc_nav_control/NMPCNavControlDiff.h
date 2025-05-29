@@ -51,7 +51,8 @@ class NMPCNavControlDiff : public NMPCNavControl {
 
         double getHorizon() override { return DIFF2AMR_N; }
 
-        bool run(const Pose& robot_pose, const std::list<Pose>& traj_ref,
+        bool run(const Pose& robot_pose, const Vel& robot_vel,
+                 const std::list<Pose>& traj_ref,
                  CmdVel& robot_vel_ref, double& cpu_time) override;
 
     private:

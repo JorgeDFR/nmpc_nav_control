@@ -33,7 +33,7 @@ class NMPCNavControlOmni4 : public NMPCNavControl {
             double x1[OMNI4AMR_NX];
             double status, kkt_res, cpu_time;
         };
-        
+
         // Acados variables
         SolverInput acados_in_;
         SolverOutput acados_out_;
@@ -48,11 +48,12 @@ class NMPCNavControlOmni4 : public NMPCNavControl {
 
         double getHorizon() override { return OMNI4AMR_N; }
 
-        bool run(const Pose& robot_pose, const std::list<Pose>& traj_ref, 
+        bool run(const Pose& robot_pose, const Vel& robot_vel,
+                 const std::list<Pose>& traj_ref,
                  CmdVel& robot_vel_ref, double& cpu_time) override;
 
     private:
-        void directKinematrics(const double v, const double vn, const double w, 
+        void directKinematrics(const double v, const double vn, const double w,
                                double& v1, double& v2, double& v3, double& v4);
 
         void inverseKinematrics(const double v1, const double v2, const double v3, const double v4,

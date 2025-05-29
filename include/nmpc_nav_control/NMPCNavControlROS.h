@@ -55,6 +55,7 @@ class NMPCNavControlROS {
         std::unique_ptr<NMPCNavControl> mpc_control_;
         std::unique_ptr<NMPCNavControl::CmdVel> robot_vel_ref_;
         NMPCNavControl::Pose robot_pose_;
+        NMPCNavControl::Vel robot_vel_;
         double robot_steering_wheel_angle_;
         geometry_msgs::PoseStamped goal_pose_;
 
@@ -88,6 +89,7 @@ class NMPCNavControlROS {
         void pubControlStatus();
         void pubActualPath();
         bool getRobotPose(const std::string& global_frame_id, ros::Time& time_stamp);
+        bool getRobotVel(const std::string& global_frame_id, const ros::Time& time_stamp); // WIP
         bool getSteeringWheelAngle(const ros::Time& time_stamp);
 
         void mainTimerCallBack(const ros::TimerEvent&);
@@ -96,7 +98,7 @@ class NMPCNavControlROS {
         // Other topics that can receive paths
         // void pathNoStackUpReceivedCallback(const itrci_nav::ParametricPathSet::ConstPtr& msg); // Topic: 'PathNoStackUp'
         // void pathWithEndOffsetReceivedCallback(const itrci_nav::ParametricPathSetWithEndOffset::ConstPtr &msg); // Topic: 'PathWithEndOffset'
-        
+
         void getInputData(const std::string& global_frame_id);
         void processPathReceived(const itrci_nav::ParametricPathSet& path);
         void processPathBuffers(const double active_path_u);
@@ -105,7 +107,6 @@ class NMPCNavControlROS {
         void processGoToPose();
         void processFollowPath();
         void executeNMPC(const std::list<NMPCNavControl::Pose>& goal_pose_array);
-
 };
 
 } // namespace nmpc_nav_control

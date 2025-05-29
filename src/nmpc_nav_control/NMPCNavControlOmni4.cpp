@@ -2,7 +2,7 @@
 
 namespace nmpc_nav_control {
 
-NMPCNavControlOmni4::NMPCNavControlOmni4(double dt, double l1_plus_l2) : NMPCNavControl(dt), 
+NMPCNavControlOmni4::NMPCNavControlOmni4(double dt, double l1_plus_l2) : NMPCNavControl(dt),
                                                                          l1_plus_l2_(l1_plus_l2)
 {
     // Initialize MPC
@@ -14,21 +14,22 @@ NMPCNavControlOmni4::NMPCNavControlOmni4(double dt, double l1_plus_l2) : NMPCNav
     for(unsigned int i = 0; i < OMNI4AMR_NU; i++) acados_out_.u0[i] = 0.0;
 }
 
-bool NMPCNavControlOmni4::run(const Pose& robot_pose, const std::list<Pose>& traj_ref, 
+bool NMPCNavControlOmni4::run(const Pose& robot_pose, const Vel& robot_vel,
+                              const std::list<Pose>& traj_ref,
                               CmdVel& robot_vel_ref, double& cpu_time)
 {
     // Set initial state
     acados_in_.x0[x] = robot_pose.x;
     acados_in_.x0[y] = robot_pose.y;
     acados_in_.x0[theta] = robot_pose.theta;
-    
-    ocp_nlp_constraints_model_set(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims, 
+
+    ocp_nlp_constraints_model_set(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims,
                                   mpc_capsule_->nlp_in, mpc_capsule_->nlp_out,
                                   0, "lbx", acados_in_.x0);
-    ocp_nlp_constraints_model_set(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims, 
+    ocp_nlp_constraints_model_set(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims,
                                   mpc_capsule_->nlp_in, mpc_capsule_->nlp_out,
                                   0, "ubx", acados_in_.x0);
-    
+
     // Unwrap reference angles
     double previous_theta = robot_pose.theta;
     auto it = traj_ref.begin();
@@ -47,8 +48,8 @@ bool NMPCNavControlOmni4::run(const Pose& robot_pose, const std::list<Pose>& tra
     }
 
     // Set reference trajectory
-    for (unsigned int i = 0; i <= OMNI4AMR_N; i++) {            
-        ocp_nlp_cost_model_set(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims, 
+    for (unsigned int i = 0; i <= OMNI4AMR_N; i++) {
+        ocp_nlp_cost_model_set(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims,
                                mpc_capsule_->nlp_in, i, "yref", acados_in_.yref[i]);
     }
 
@@ -62,7 +63,7 @@ bool NMPCNavControlOmni4::run(const Pose& robot_pose, const std::list<Pose>& tra
     ocp_nlp_get(mpc_capsule_->nlp_solver, "time_tot", &acados_out_.cpu_time);
     cpu_time = acados_out_.cpu_time*1000;
 
-    ocp_nlp_out_get(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims, 
+    ocp_nlp_out_get(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims,
                     mpc_capsule_->nlp_out, 0, "u", (void*)acados_out_.u0);
 
     // Get reference velocities for the robot
@@ -74,7 +75,7 @@ bool NMPCNavControlOmni4::run(const Pose& robot_pose, const std::list<Pose>& tra
 
     // Cast CmdVel to CmdVelOmni4
     CmdVelOmni4* cmd_vel_omni4 = getCommandVelocity<CmdVelOmni4>(robot_vel_ref);
-    if (!cmd_vel_omni4) { 
+    if (!cmd_vel_omni4) {
         throw std::runtime_error("Invalid command velocity type passed to run method.");
         return false;
     }
@@ -82,14 +83,14 @@ bool NMPCNavControlOmni4::run(const Pose& robot_pose, const std::list<Pose>& tra
                        cmd_vel_omni4->v, cmd_vel_omni4->vn, cmd_vel_omni4->w);
 
     // Setup next cycle initial state
-    ocp_nlp_out_get(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims, 
+    ocp_nlp_out_get(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims,
                     mpc_capsule_->nlp_out, 1, "x", (void*)acados_in_.x0);
 
     return true;
-}   
+}
 
 
-void NMPCNavControlOmni4::directKinematrics(const double v, const double vn, const double w, 
+void NMPCNavControlOmni4::directKinematrics(const double v, const double vn, const double w,
                                             double& v1, double& v2, double& v3, double& v4)
 {
     v1 =  v - vn - 0.5 * l1_plus_l2_ * w;
