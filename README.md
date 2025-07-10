@@ -93,7 +93,7 @@ mkdir -p ~/catkin_ws/src
 
 # Clone the repository
 cd ~/catkin_ws/src
-git clone https://github.com/Thorfr123/nmpc_nav_control
+git clone https://github.com/JorgeDFR/nmpc_nav_control
 
 # Generate acados solvers libraries
 cd ~/catkin_ws/src/nmpc_nav_control
@@ -110,13 +110,13 @@ source devel/setup.bash
 **ROS 1**
 
 ```sh
-# Generate updated acados solvers libraries
-roslaunch nmpc_nav_control run_nmpc_nav_control_generate_libs.launch
-
 # Launch main node
 roslaunch nmpc_nav_control run_nmpc_nav_control.launch
 
-# Generate updated acados solvers libraries and launch main node
+# Optional: Generate updated acados solvers libraries via ROS
+roslaunch nmpc_nav_control run_nmpc_nav_control_generate_libs.launch
+
+# Optional: Generate updated acados solvers libraries via ROS and launch main node
 roslaunch nmpc_nav_control run_nmpc_nav_control_full.launch
 ```
 

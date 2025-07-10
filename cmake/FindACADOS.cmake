@@ -4,8 +4,10 @@
 #  ACADOS_INCLUDE_DIRS - Where to find the acados headers
 #  ACADOS_LIBRARIES    - The libraries to link against
 
+include(FindPackageHandleStandardArgs)
+
 # Use environment variables to guide search locations
-set(ACADOS_INCLUDE_SEARCH_PATHS
+set(_ACADOS_INCLUDE_DIR_HINTS
   "/usr/include"
   "/usr/local/include"
   "/opt/acados/include"
@@ -13,7 +15,7 @@ set(ACADOS_INCLUDE_SEARCH_PATHS
   "$ENV{ACADOS_SOURCE_DIR}/include"
 )
 
-set(ACADOS_LIB_SEARCH_PATHS
+set(_ACADOS_LIBRARY_DIR_HINTS
   "/usr/lib"
   "/usr/local/lib"
   "/opt/acados/lib"
@@ -22,22 +24,30 @@ set(ACADOS_LIB_SEARCH_PATHS
 )
 
 # Find acados include directory
-find_path(ACADOS_INCLUDE_DIR_BASE NAMES acados PATHS ${ACADOS_INCLUDE_SEARCH_PATHS})
+find_path(ACADOS_INCLUDE_DIR_BASE
+    NAMES acados/utils/types.h
+    HINTS ${_ACADOS_INCLUDE_DIR_HINTS}
+    PATH_SUFFIXES include
+)
 
 # Find acados library
-find_library(ACADOS_LIB NAMES acados PATHS ${ACADOS_LIB_SEARCH_PATHS})
+find_library(ACADOS_LIB
+    NAMES acados
+    HINTS ${_ACADOS_LIBRARY_DIR_HINTS}
+    PATH_SUFFIXES lib
+)
 
 # If the library and include directory base are found, define ACADOS_FOUND
 if(ACADOS_LIB AND ACADOS_INCLUDE_DIR_BASE)
     set(ACADOS_FOUND TRUE)
 
     # Set the directories based on your structure
-    set(ACADOS_INCLUDE_DIRS 
-        ${ACADOS_INCLUDE_DIR_BASE}/include
-        ${ACADOS_INCLUDE_DIR_BASE}/include/acados
-        ${ACADOS_INCLUDE_DIR_BASE}/include/blasfeo/include
-        ${ACADOS_INCLUDE_DIR_BASE}/include/hpipm/include
-        ${ACADOS_INCLUDE_DIR_BASE}/include/qpOASES_e
+    set(ACADOS_INCLUDE_DIRS
+        ${ACADOS_INCLUDE_DIR_BASE}
+        ${ACADOS_INCLUDE_DIR_BASE}/acados
+        ${ACADOS_INCLUDE_DIR_BASE}/blasfeo/include
+        ${ACADOS_INCLUDE_DIR_BASE}/hpipm/include
+        ${ACADOS_INCLUDE_DIR_BASE}/qpOASES_e
     )
     set(ACADOS_LIBRARIES ${ACADOS_LIB})
 else()
