@@ -1,4 +1,4 @@
-# [NMPC Nav Control](https://github.com/Thorfr123/nmpc_nav_control)
+# [NMPC Nav Control](https://github.com/JorgeDFR/nmpc_nav_control)
 
 This repository provides a ROS package with a Nonlinear Model Predictive Control (NMPC) framework for mobile robot navigation using the `acados` open source library. This package supports various robot models, including omnidirectional, differential, and tricycle steering geometries, and allows for path following and pose navigation.
 
