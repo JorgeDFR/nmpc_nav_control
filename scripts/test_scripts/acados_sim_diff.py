@@ -51,16 +51,16 @@ ocp = AcadosOcp()
 ocp.model = acados_model
 
 # Discretization
-Ts = 0.1     # Sampling time
-N  = 20      # Prediction horizon
+Ts = 0.025   # Sampling time
+N  = 80      # Prediction horizon
 Tf = N * Ts  # Time horizon
 
-ocp.dims.N = N
+ocp.solver_options.N_horizon = N
 ocp.solver_options.tf = Tf
 
 # Cost function
 Q  = np.diag([10.0, 10.0, 5.0, 0.0, 0.0])  # State cost weights
-QN = np.diag([10.0, 10.0, 5.0, 0.0, 0.0])  # State terminal cost weights
+QN = np.diag([1000.0, 1000.0, 500.0, 0.0, 0.0])  # State terminal cost weights
 R  = np.diag([1.0, 1.0])                   # Control cost weights
 
 nx = acados_model.x.rows()
@@ -78,8 +78,8 @@ ocp.cost.yref_e = np.zeros((nx,))
 ocp.cost.W_e = QN
 
 # Constraints
-v_max = 1.5  # Max wheel velocity [m/s]
-a_max = 3.0  # Max wheel acceleration [m/s^2]
+v_max = 1.0  # Max wheel velocity [m/s]
+a_max = 1.0  # Max wheel acceleration [m/s^2]
 
 ocp.constraints.lbx   = np.array([-v_max, -v_max])
 ocp.constraints.ubx   = np.array([ v_max,  v_max])
@@ -109,36 +109,10 @@ state = np.array([0.0, 0.0, 0.0, 0.0, 0.0])  # Initial state
 # Time vector
 t = np.linspace(0.0, sim_time, n_steps+1)
 
-# Reference trajectory (Line)
-# v_nom = 0.5
-# a_nom = 0.5
-# stop_time = 8.0
-# t_accel = v_nom / a_nom
-# if 2 * t_accel > stop_time:
-#     t_accel = stop_time / 2
-#     v_nom = a_nom * t_accel
-# t_cruise = stop_time - 2 * t_accel
-# v_ref = np.zeros_like(t)
-# for i, ti in enumerate(t):
-#     if ti < t_accel:
-#         v_ref[i] = a_nom * ti
-#     elif ti < t_accel + t_cruise:
-#         v_ref[i] = v_nom
-#     elif ti < 2 * t_accel + t_cruise:
-#         v_ref[i] = v_nom - a_nom * (ti - t_accel - t_cruise)
-#     else:
-#         v_ref[i] = 0.0
-v_ref = np.where(t <= 8.0, 0.5, 0.0)  # Reference speed [m/s]
-x_ref = 0.0 + np.cumsum(v_ref * np.diff(np.insert(t, 0, 0)))
-y_ref = 0.0 + np.cumsum(v_ref * np.diff(np.insert(t, 0, 0)))
-theta_ref = np.pi/4 * np.ones_like(t)
-vL_ref = v_ref.copy()
-vR_ref = v_ref.copy()
-
 # Reference trajectory (Pose)
-# x_ref = np.full_like(t, 2.0)
-# y_ref = np.full_like(t, 0.0)
-# theta_ref = np.full_like(t, 0.0)
+x_ref = np.full_like(t, 0.1)
+y_ref = np.full_like(t, 2.0)
+theta_ref = np.full_like(t, 0.0)
 
 state_history[0, :] = state
 state_ocp = state
@@ -186,11 +160,86 @@ for i in range(n_steps):
 
     state_history[i+1, :] = state
 
-    # state_ocp = ocp_solver.get(1, 'x')
-    # state_ocp[0:3] = state[0:3]
-
     state_ocp = state
-    # state_ocp[3:5] += np.random.normal(0, abs(0.01*state[3:5]), 2)
+
+import matplotlib.animation as animation
+from matplotlib.patches import Polygon, Rectangle
+
+ROBOT_WIDTH = 0.2
+ROBOT_LENGTH = 0.2
+STEER_WHEEL_LENGTH = 0.1
+STEER_WHEEL_WIDTH = 0.02
+
+def create_robot_patch(x, y, theta):
+    """
+    Creates a triangular patch (robot body).
+    """
+    # Robot triangle
+    width = ROBOT_WIDTH
+    length = ROBOT_LENGTH
+
+    # Define triangle (body) in local frame
+    triangle = np.array([
+        [length, 0],           # Front tip
+        [-length/2, -width/2], # Rear left
+        [-length/2, width/2],  # Rear right
+    ])
+
+    # Rotation matrix for theta
+    R = np.array([
+        [np.cos(theta), -np.sin(theta)],
+        [np.sin(theta),  np.cos(theta)]
+    ])
+
+    # Rotate and translate triangle
+    triangle = (R @ triangle.T).T + np.array([x, y])
+
+    return triangle
+
+# Set up figure
+fig, ax = plt.subplots(figsize=(10, 6))
+ax.set_aspect('equal')
+ax.set_xlim(np.min(state_history[:, 0]) - 1, np.max(state_history[:, 0]) + 1)
+ax.set_ylim(np.min(state_history[:, 1]) - 1, np.max(state_history[:, 1]) + 1)
+ax.set_title('Robot Motion Animation')
+ax.set_xlabel('x [m]')
+ax.set_ylabel('y [m]')
+ax.grid()
+
+# Initialize elements
+robot_patch = Polygon([[0, 0]], closed=True, color='blue', label='Robot')
+ref_traj, = ax.plot([], [], 'ro', markersize=3, label='Reference Trajectory')
+robot_traj, = ax.plot([], [], 'k--', linewidth=1.5, label='Robot Trajectory')
+
+ax.add_patch(robot_patch)
+ax.legend()
+
+def init():
+    robot_patch.set_xy([[0, 0]])
+    ref_traj.set_data([], [])
+    robot_traj.set_data([], [])
+    return robot_patch, ref_traj, robot_traj
+
+def animate(i):
+    x, y, theta, vL, vR = state_history[i, :]
+    triangle = create_robot_patch(x, y, theta)
+
+    # Update patches
+    robot_patch.set_xy(triangle)
+
+    # Update reference pose
+    ref_traj.set_data(x_ref[:i+1], y_ref[:i+1])
+
+    # Update trajectory
+    robot_traj.set_data(state_history[:i+1, 0], state_history[:i+1, 1])
+
+    return robot_patch, ref_traj, robot_traj
+
+# Animate
+ani = animation.FuncAnimation(fig, animate, frames=len(t), init_func=init,
+                              interval=Ts*1000, blit=True, repeat=False)
+
+plt.show()
 
 plt.figure()
 plt.scatter(x_ref, y_ref, c='r', label='Reference')
@@ -202,19 +251,17 @@ plt.legend()
 plt.grid()
 plt.axis('equal')
 
-
 plt.figure()
-plt.scatter(t, state_history[:, 0], c='b', label='x')
-plt.scatter(t, state_history[:, 1], c='r', label='y')
+plt.plot(t, state_history[:, 0], label='x')
+plt.plot(t, state_history[:, 1], label='y')
+plt.plot(t, state_history[:, 2], label='theta')
+plt.plot(t, state_history[:, 3], label='vL')
+plt.plot(t, state_history[:, 4], label='vR')
 plt.xlabel('time')
+plt.ylabel('states')
+plt.title('States over time')
+plt.legend()
 plt.grid()
 plt.axis('equal')
-
-
-
-
-
-
-
 
 plt.show()

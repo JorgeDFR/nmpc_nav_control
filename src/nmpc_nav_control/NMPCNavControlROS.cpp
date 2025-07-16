@@ -46,15 +46,15 @@ void NMPCNavControlROS::readParam()
         throw std::runtime_error("The node nmpc_nav_control requires the definition "
                                  "of the steering_geometry parameter");
     }
-
+    ROS_INFO("[%s] Modified Version", ros::this_node::getName().c_str());
     nh_priv_.param<std::string>("global_frame_id", global_frame_id_, "map");
     nh_priv_.param<std::string>("base_frame_id", base_frame_id_, "base_footprint");
     nh_priv_.param<int>("control_freq", control_freq_, 40);
-    nh_priv_.param("transform_timeout", transform_timeout_, 0.1);
-    nh_priv_.param("max_active_path_length_", max_active_path_length_, 5.0);
+    nh_priv_.param<double>("transform_timeout", transform_timeout_, 0.1);
+    nh_priv_.param<double>("max_active_path_length", max_active_path_length_, 5.0);
 
-    nh_priv_.param("final_position_error", final_position_error_, 0.001);
-    nh_priv_.param("final_orientation_error", final_orientation_error_, 1.0);
+    nh_priv_.param<double>("final_position_error", final_position_error_, 0.001);
+    nh_priv_.param<double>("final_orientation_error", final_orientation_error_, 1.0);
     final_orientation_error_ = final_orientation_error_ * M_PI/180.0;
 
     ROS_INFO("[%s] Global frame ID: %s", ros::this_node::getName().c_str(), global_frame_id_.c_str());
@@ -106,12 +106,13 @@ void NMPCNavControlROS::readParam()
             ros::shutdown();
         }
     } else if (steering_geometry_ == kTricStr) {
-        if (!nh_priv_.hasParam("rob_dist_between_steering_back_wh")) {
+        if (!nh_priv_.hasParam("steering_wheel_frame_id") ||
+            !nh_priv_.hasParam("rob_dist_between_steering_back_wh")) {
             throw std::runtime_error("The steering geometry " + steering_geometry_ + " requires the "
                                      "definition of the following parameters: "
                                      "steering_wheel_frame_id, rob_dist_between_steering_back_wh");
         }
-        nh_priv_.param<std::string>("steering_wheel_frame_id", steering_wheel_frame_id_, "direction_wheel");
+        nh_priv_.getParam("steering_wheel_frame_id", steering_wheel_frame_id_);
         ROS_INFO("[%s] Steering wheel frame ID: %s", ros::this_node::getName().c_str(), steering_wheel_frame_id_.c_str());
 
         double dist_d;

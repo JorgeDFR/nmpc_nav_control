@@ -54,7 +54,7 @@ With this version, the package provides the following features:
 
 #### Tricycle (`tric`)
 
-- `steering_wheel_frame_id` (double, **required**): Frame ID for the steering wheel.
+- `steering_wheel_frame_id` (string, **required**): Frame ID for the steering wheel.
 - `rob_dist_between_steering_back_wh` (double, **required**): Distance between the steering wheel and rear wheels (m)
 
 ## Subscribes Topics
