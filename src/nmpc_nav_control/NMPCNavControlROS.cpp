@@ -50,11 +50,11 @@ void NMPCNavControlROS::readParam()
     nh_priv_.param<std::string>("global_frame_id", global_frame_id_, "map");
     nh_priv_.param<std::string>("base_frame_id", base_frame_id_, "base_footprint");
     nh_priv_.param<int>("control_freq", control_freq_, 40);
-    nh_priv_.param<double>("transform_timeout", transform_timeout_, 0.1);
-    nh_priv_.param<double>("max_active_path_length_", max_active_path_length_, 5.0);
+    nh_priv_.param("transform_timeout", transform_timeout_, 0.1);
+    nh_priv_.param("max_active_path_length_", max_active_path_length_, 5.0);
 
-    nh_priv_.param<double>("final_positon_error", final_positon_error_, 0.001);
-    nh_priv_.param<double>("final_orientation_error", final_orientation_error_, 1.0);
+    nh_priv_.param("final_position_error", final_position_error_, 0.001);
+    nh_priv_.param("final_orientation_error", final_orientation_error_, 1.0);
     final_orientation_error_ = final_orientation_error_ * M_PI/180.0;
 
     ROS_INFO("[%s] Global frame ID: %s", ros::this_node::getName().c_str(), global_frame_id_.c_str());
@@ -62,7 +62,7 @@ void NMPCNavControlROS::readParam()
     ROS_INFO("[%s] Controller frequency: %d Hz", ros::this_node::getName().c_str(), control_freq_);
     ROS_INFO("[%s] Transform timeout: %lf s", ros::this_node::getName().c_str(), transform_timeout_);
     ROS_INFO("[%s] Maximum active path length: %lf m", ros::this_node::getName().c_str(), max_active_path_length_);
-    ROS_INFO("[%s] Final position error: %lf m", ros::this_node::getName().c_str(), final_positon_error_);
+    ROS_INFO("[%s] Final position error: %lf m", ros::this_node::getName().c_str(), final_position_error_);
     ROS_INFO("[%s] Final orientation error: %lf deg", ros::this_node::getName().c_str(), final_orientation_error_*180/M_PI);
 
     nh_priv_.getParam("steering_geometry", steering_geometry_);
@@ -456,7 +456,7 @@ void NMPCNavControlROS::processGoToPose()
     // Check end of trajectory
     double d = dist(robot_pose_.x, robot_pose_.y, pose.x, pose.y);
     double ang = normAngRad(robot_pose_.theta - pose.theta);
-    if ((d <= final_positon_error_) && (ang <= final_orientation_error_)) {
+    if ((d <= final_position_error_) && (ang <= final_orientation_error_)) {
         pubCmdVel(true);
         current_status_ = Status::Idle;
         return;
@@ -486,7 +486,7 @@ void NMPCNavControlROS::processFollowPath()
     // Check end of trajectory
     double d = dist(robot_pose_.x, robot_pose_.y, goal_pose_array.begin()->x, goal_pose_array.begin()->y);
     double ang = normAngRad(robot_pose_.theta - goal_pose_array.begin()->theta);
-    if ((d <= final_positon_error_) && (ang <= final_orientation_error_)) {
+    if ((d <= final_position_error_) && (ang <= final_orientation_error_)) {
         if (upcoming_path_.size() == 0) { current_status_ = Status::Idle; }
         else {
             active_path_.pop_front();

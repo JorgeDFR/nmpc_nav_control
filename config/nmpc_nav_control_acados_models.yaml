@@ -18,8 +18,8 @@ omni4_params:
 
                             # Terminal cost: state weights
   QN: [10.0, 10.0, 10.0,    # robot pose (x, y, theta)
-      0.0, 0.0, 0.0, 0.0,   # robot wheel velocities (v1, v2, v3, v4)
-      0.0, 0.0, 0.0, 0.0]   # robot wheel reference velocities (v1_ref, v2_ref, v3_ref, v4_ref)
+       0.0, 0.0, 0.0, 0.0,  # robot wheel velocities (v1, v2, v3, v4)
+       0.0, 0.0, 0.0, 0.0]  # robot wheel reference velocities (v1_ref, v2_ref, v3_ref, v4_ref)
 
 # Diff AMR parameters for the Python script
 diff_params:
@@ -39,10 +39,10 @@ diff_params:
                             # Path cost: control weights
   R: [1.0, 1.0]             # variation of wheel reference velocities (dvl_ref, dvr_ref)
 
-                            # Terminal cost: state weights
-  QN: [10.0, 10.0, 5.0,     # robot pose (x, y, theta)
-       0.0, 0.0,            # robot wheel velocities (vl, vr)
-       0.0, 0.0]            # robot wheel reference velocities (vl_ref, vr_ref)
+                               # Terminal cost: state weights
+  QN: [1000.0, 1000.0, 500.0,  # robot pose (x, y, theta)
+       0.0, 0.0,               # robot wheel velocities (vl, vr)
+       0.0, 0.0]               # robot wheel reference velocities (vl_ref, vr_ref)
 
 # Tric AMR parameters for the Python script
 tric_params:
@@ -66,7 +66,7 @@ tric_params:
                             # Path cost: control weights
   R: [1.0, 1.0]             # variation of reference velocity (dv_ref) and steering angle (dalpha_ref)
 
-                            # Terminal cost: state weights
-  QN: [10.0, 10.0, 5.0,     # robot pose (x, y, theta)
-       0.0, 0.0,            # robot linear velocity (v) and steering angle (alpha)
-       0.0, 0.0]            # robot reference linear velocity (v_ref) and steering angle (alpha_ref)
+                               # Terminal cost: state weights
+  QN: [1000.0, 1000.0, 500.0,  # robot pose (x, y, theta)
+       0.0, 0.0,               # robot linear velocity (v) and steering angle (alpha)
+       0.0, 0.0]               # robot reference linear velocity (v_ref) and steering angle (alpha_ref)

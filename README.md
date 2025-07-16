@@ -12,7 +12,7 @@ With this version, the package provides the following features:
 - Publishes robot control status and actual paths.
 - Real-time robot pose and steering angle updates via TF transforms.
 - Provides Python scripts for modify and generate acados models for all the robot steering geometries.
-- Provides a `Findacados.cmake` file that simplifies the integration of acados by automatically locating its headers and libraries.
+- Provides a `FindACADOS.cmake` file that simplifies the integration of acados by automatically locating its headers and libraries.
 
 ## ROS
 

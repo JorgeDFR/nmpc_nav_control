@@ -49,7 +49,7 @@ class NMPCNavControlROS {
         std::string steering_geometry_;
         int control_freq_;
         double transform_timeout_;
-        double final_positon_error_;
+        double final_position_error_;
         double final_orientation_error_;
 
         std::unique_ptr<NMPCNavControl> mpc_control_;
