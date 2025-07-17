@@ -16,13 +16,18 @@ class NMPCNavControlTric : public NMPCNavControl {
         };
 
     private:
-        enum SystemStates {
+        enum SystemStatesMap {
             x = 0, y = 1, theta = 2,
             v = 3, alpha = 4,
             v_ref = 5, alpha_ref = 6
         };
-        enum ControlInputs {
+        enum ControlInputsMap {
             dv_ref = 0, dalpha_ref = 1
+        };
+        enum SystemParametersMap {
+            dist_d = 0,
+            tau_v = 1,
+            tau_a = 2
         };
         struct SolverInput {
             double x0[TRIC3AMR_NX];
@@ -33,19 +38,29 @@ class NMPCNavControlTric : public NMPCNavControl {
             double x1[TRIC3AMR_NX];
             double status, kkt_res, cpu_time;
         };
+        struct SolverParameters {
+            double p[TRIC3AMR_NP];
+            double x_min[TRIC3AMR_NBX];
+            double x_max[TRIC3AMR_NBX];
+            double u_min[TRIC3AMR_NBU];
+            double u_max[TRIC3AMR_NBU];
+            double W[TRIC3AMR_NY*TRIC3AMR_NY];
+            double W_e[TRIC3AMR_NYN*TRIC3AMR_NYN];
+        };
 
         // Acados variables
         SolverInput acados_in_;
         SolverOutput acados_out_;
+        SolverParameters acados_p_;
         tric3amr_solver_capsule* mpc_capsule_;
 
         // Other variables
-        double dist_front_to_back_;
         double robot_steering_wheel_angle_;
 
     public:
-        NMPCNavControlTric(double dt, double dist_back_to_front);
-        ~NMPCNavControlTric() = default;
+        NMPCNavControlTric(double dt, double dist_d, double tau_v, double tau_a, double v_max, double a_max,
+                           double alpha_min, double alpha_max, double dalpha_max);
+        ~NMPCNavControlTric();
 
         double getHorizon() override { return TRIC3AMR_N; }
 

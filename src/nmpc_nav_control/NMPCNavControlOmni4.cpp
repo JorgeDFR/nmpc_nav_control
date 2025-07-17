@@ -2,16 +2,89 @@
 
 namespace nmpc_nav_control {
 
-NMPCNavControlOmni4::NMPCNavControlOmni4(double dt, double l1_plus_l2) : NMPCNavControl(dt),
-                                                                         l1_plus_l2_(l1_plus_l2)
+NMPCNavControlOmni4::NMPCNavControlOmni4(double dt, double l1_plus_l2, double tau_v, double v_max, double a_max) : NMPCNavControl(dt)
 {
     // Initialize MPC
     mpc_capsule_ = omni4amr_acados_create_capsule();
     int create_status = omni4amr_acados_create(mpc_capsule_);
     processCreateStatus(create_status);
 
-    for(unsigned int i = 0; i < OMNI4AMR_NX; i++) acados_in_.x0[i] = 0.0;
-    for(unsigned int i = 0; i < OMNI4AMR_NU; i++) acados_out_.u0[i] = 0.0;
+    for (unsigned int i = 0; i < OMNI4AMR_NX; i++) { acados_in_.x0[i] = 0.0; }
+    for (unsigned int i = 0; i < OMNI4AMR_NU; i++) { acados_out_.u0[i] = 0.0; }
+
+    acados_p_.p[SystemParametersMap::l1_plus_l2] = l1_plus_l2;
+    acados_p_.p[SystemParametersMap::tau_v] = tau_v;
+    acados_p_.x_min[0] = acados_p_.x_min[1] = acados_p_.x_min[2] = acados_p_.x_min[3] = -v_max;
+    acados_p_.x_max[0] = acados_p_.x_max[1] = acados_p_.x_max[2] = acados_p_.x_max[3] =  v_max;
+    acados_p_.u_min[0] = acados_p_.u_min[1] = acados_p_.u_min[2] = acados_p_.u_min[3] = -a_max;
+    acados_p_.u_max[0] = acados_p_.u_max[1] = acados_p_.u_max[2] = acados_p_.u_max[3] =  a_max;
+
+    for (unsigned int i = 0; i < OMNI4AMR_NY*OMNI4AMR_NY; i++) { acados_p_.W[i] = 0.0; }
+    // acados_p_.W[0+(OMNI4AMR_NY) * 0] = 10.0;
+    // acados_p_.W[1+(OMNI4AMR_NY) * 1] = 10.0;
+    // acados_p_.W[2+(OMNI4AMR_NY) * 2] = 10.0;
+    // acados_p_.W[3+(OMNI4AMR_NY) * 3] = 0.0;
+    // acados_p_.W[4+(OMNI4AMR_NY) * 4] = 0.0;
+    // acados_p_.W[5+(OMNI4AMR_NY) * 5] = 0.0;
+    // acados_p_.W[6+(OMNI4AMR_NY) * 6] = 0.0;
+    // acados_p_.W[7+(OMNI4AMR_NY) * 7] = 0.0;
+    // acados_p_.W[8+(OMNI4AMR_NY) * 8] = 0.0;
+    // acados_p_.W[9+(OMNI4AMR_NY) * 9] = 0.0;
+    // acados_p_.W[10+(OMNI4AMR_NY) * 10] = 0.0;
+    // acados_p_.W[11+(OMNI4AMR_NY) * 11] = 1.0;
+    // acados_p_.W[12+(OMNI4AMR_NY) * 12] = 1.0;
+    // acados_p_.W[13+(OMNI4AMR_NY) * 13] = 1.0;
+    // acados_p_.W[14+(OMNI4AMR_NY) * 14] = 1.0;
+    for (unsigned int i = 0; i < OMNI4AMR_NYN*OMNI4AMR_NYN; i++) { acados_p_.W_e[i] = 0.0; }
+    // acados_p_.W_e[0+(OMNI4AMR_NYN) * 0] = 10.0;
+    // acados_p_.W_e[1+(OMNI4AMR_NYN) * 1] = 10.0;
+    // acados_p_.W_e[2+(OMNI4AMR_NYN) * 2] = 10.0;
+    // acados_p_.W_e[3+(OMNI4AMR_NYN) * 3] = 0.0;
+    // acados_p_.W_e[4+(OMNI4AMR_NYN) * 4] = 0.0;
+    // acados_p_.W_e[5+(OMNI4AMR_NYN) * 5] = 0.0;
+    // acados_p_.W_e[6+(OMNI4AMR_NYN) * 6] = 0.0;
+    // acados_p_.W_e[7+(OMNI4AMR_NYN) * 7] = 0.0;
+    // acados_p_.W_e[8+(OMNI4AMR_NYN) * 8] = 0.0;
+    // acados_p_.W_e[9+(OMNI4AMR_NYN) * 9] = 0.0;
+    // acados_p_.W_e[10+(OMNI4AMR_NYN) * 10] = 0.0;
+
+    // Set model parameters
+    for (unsigned int i = 0; i < OMNI4AMR_N; i++) {
+        omni4amr_acados_update_params(mpc_capsule_, i, acados_p_.p, OMNI4AMR_NP);
+    }
+
+    // Set constraints bounds
+    for (unsigned int i = 1; i <= OMNI4AMR_N; i++) {
+        ocp_nlp_constraints_model_set(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims,
+                                      mpc_capsule_->nlp_in, mpc_capsule_->nlp_out,
+                                      i, "lbx", acados_p_.x_min);
+        ocp_nlp_constraints_model_set(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims,
+                                      mpc_capsule_->nlp_in, mpc_capsule_->nlp_out,
+                                      i, "ubx", acados_p_.x_max);
+    }
+
+    for (unsigned int i = 0; i < OMNI4AMR_N; i++) {
+        ocp_nlp_constraints_model_set(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims,
+                                      mpc_capsule_->nlp_in, mpc_capsule_->nlp_out,
+                                      i, "lbu", acados_p_.u_min);
+        ocp_nlp_constraints_model_set(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims,
+                                      mpc_capsule_->nlp_in, mpc_capsule_->nlp_out,
+                                      i, "ubu", acados_p_.u_max);
+    }
+
+    // Set cost function weights
+    // for (unsigned int i = 0; i < OMNI4AMR_N; i++) {
+    //     ocp_nlp_cost_model_set(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims,
+    //                            mpc_capsule_->nlp_in, i, "W", acados_p_.W);
+    // }
+    // ocp_nlp_cost_model_set(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims,
+    //                        mpc_capsule_->nlp_in, OMNI4AMR_N, "W", acados_p_.W_e);
+}
+
+NMPCNavControlOmni4::~NMPCNavControlOmni4()
+{
+    omni4amr_acados_free(mpc_capsule_);
+    omni4amr_acados_free_capsule(mpc_capsule_);
 }
 
 bool NMPCNavControlOmni4::run(const Pose& robot_pose, const Vel& robot_vel,
@@ -22,6 +95,14 @@ bool NMPCNavControlOmni4::run(const Pose& robot_pose, const Vel& robot_vel,
     acados_in_.x0[x] = robot_pose.x;
     acados_in_.x0[y] = robot_pose.y;
     acados_in_.x0[theta] = robot_pose.theta;
+
+    double v1_est, v2_est, v3_est, v4_est;
+    directKinematrics(robot_vel.v, robot_vel.vn, robot_vel.w,
+                      v1_est, v2_est, v3_est, v4_est);
+    acados_in_.x0[v1] = v1_est;
+    acados_in_.x0[v2] = v2_est;
+    acados_in_.x0[v3] = v3_est;
+    acados_in_.x0[v4] = v4_est;
 
     ocp_nlp_constraints_model_set(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims,
                                   mpc_capsule_->nlp_in, mpc_capsule_->nlp_out,
@@ -86,6 +167,11 @@ bool NMPCNavControlOmni4::run(const Pose& robot_pose, const Vel& robot_vel,
     ocp_nlp_out_get(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims,
                     mpc_capsule_->nlp_out, 1, "x", (void*)acados_in_.x0);
 
+    acados_in_.x0[v1_ref] = new_v1_ref;
+    acados_in_.x0[v2_ref] = new_v2_ref;
+    acados_in_.x0[v3_ref] = new_v3_ref;
+    acados_in_.x0[v4_ref] = new_v4_ref;
+
     return true;
 }
 
@@ -93,10 +179,10 @@ bool NMPCNavControlOmni4::run(const Pose& robot_pose, const Vel& robot_vel,
 void NMPCNavControlOmni4::directKinematrics(const double v, const double vn, const double w,
                                             double& v1, double& v2, double& v3, double& v4)
 {
-    v1 =  v - vn - 0.5 * l1_plus_l2_ * w;
-    v2 = -v - vn - 0.5 * l1_plus_l2_ * w;
-    v3 =  v + vn - 0.5 * l1_plus_l2_ * w;
-    v4 = -v + vn - 0.5 * l1_plus_l2_ * w;
+    v1 =  v - vn - 0.5 * acados_p_.p[l1_plus_l2] * w;
+    v2 = -v - vn - 0.5 * acados_p_.p[l1_plus_l2] * w;
+    v3 =  v + vn - 0.5 * acados_p_.p[l1_plus_l2] * w;
+    v4 = -v + vn - 0.5 * acados_p_.p[l1_plus_l2] * w;
 }
 
 void NMPCNavControlOmni4::inverseKinematrics(const double v1, const double v2, const double v3, const double v4,
@@ -104,7 +190,7 @@ void NMPCNavControlOmni4::inverseKinematrics(const double v1, const double v2, c
 {
     v  = ( v1 - v2 + v3 - v4) / 4.0;
     vn = (-v1 - v2 + v3 + v4) / 4.0;
-    w  = (-v1 - v2 - v3 - v4) / (2.0 * l1_plus_l2_);
+    w  = (-v1 - v2 - v3 - v4) / (2.0 * acados_p_.p[l1_plus_l2]);
 }
 
 } // namespace nmpc_nav_control

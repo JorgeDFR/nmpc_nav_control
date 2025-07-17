@@ -16,13 +16,17 @@ class NMPCNavControlOmni4 : public NMPCNavControl {
         };
 
     private:
-        enum SystemStates {
+        enum SystemStatesMap {
             x = 0, y = 1, theta = 2,
             v1 = 3, v2 = 4, v3 = 5, v4 = 6,
             v1_ref = 7, v2_ref = 8, v3_ref = 9, v4_ref = 10
         };
-        enum ControlInputs {
+        enum ControlInputsMap {
             dv1_ref = 0, dv2_ref = 1, dv3_ref = 2, dv4_ref = 3
+        };
+        enum SystemParametersMap {
+            l1_plus_l2 = 0,
+            tau_v = 1
         };
         struct SolverInput {
             double x0[OMNI4AMR_NX];
@@ -33,18 +37,25 @@ class NMPCNavControlOmni4 : public NMPCNavControl {
             double x1[OMNI4AMR_NX];
             double status, kkt_res, cpu_time;
         };
+        struct SolverParameters {
+            double p[OMNI4AMR_NP];
+            double x_min[OMNI4AMR_NBX];
+            double x_max[OMNI4AMR_NBX];
+            double u_min[OMNI4AMR_NBU];
+            double u_max[OMNI4AMR_NBU];
+            double W[OMNI4AMR_NY*OMNI4AMR_NY];
+            double W_e[OMNI4AMR_NYN*OMNI4AMR_NYN];
+        };
 
         // Acados variables
         SolverInput acados_in_;
         SolverOutput acados_out_;
+        SolverParameters acados_p_;
         omni4amr_solver_capsule* mpc_capsule_;
 
-        // Other variables
-        double l1_plus_l2_;
-
     public:
-        NMPCNavControlOmni4(double dt, double l1_plus_l2);
-        ~NMPCNavControlOmni4() = default;
+        NMPCNavControlOmni4(double dt, double l1_plus_l2, double tau_v, double v_max, double a_max);
+        ~NMPCNavControlOmni4();
 
         double getHorizon() override { return OMNI4AMR_N; }
 

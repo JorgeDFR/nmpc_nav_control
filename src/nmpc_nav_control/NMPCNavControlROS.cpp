@@ -53,7 +53,7 @@ void NMPCNavControlROS::readParam()
     nh_priv_.param<double>("transform_timeout", transform_timeout_, 0.1);
     nh_priv_.param<double>("max_active_path_length", max_active_path_length_, 5.0);
 
-    nh_priv_.param<double>("final_position_error", final_position_error_, 0.001);
+    nh_priv_.param<double>("final_position_error", final_position_error_, 0.01);
     nh_priv_.param<double>("final_orientation_error", final_orientation_error_, 1.0);
     final_orientation_error_ = final_orientation_error_ * M_PI/180.0;
 
@@ -71,35 +71,57 @@ void NMPCNavControlROS::readParam()
     double dt = 1.0 / double(control_freq_);
     if (steering_geometry_ == kOmni4Str) {
         if (!nh_priv_.hasParam("rob_dist_between_front_back_wh") ||
-            !nh_priv_.hasParam("rob_dist_between_left_right_wh")) {
+            !nh_priv_.hasParam("rob_dist_between_left_right_wh") ||
+            !nh_priv_.hasParam("rob_wh_vel_time_const") ||
+            !nh_priv_.hasParam("rob_wh_max_vel") ||
+            !nh_priv_.hasParam("rob_wh_max_ace")) {
             throw std::runtime_error("The steering geometry " + steering_geometry_ + " requires the "
                                      "definition of the following parameters: "
-                                     "rob_dist_between_front_back_wh, rob_dist_between_left_right_wh");
+                                     "rob_dist_between_front_back_wh, rob_dist_between_left_right_wh, "
+                                     "rob_wh_vel_time_const, rob_wh_max_vel, rob_wh_max_ace");
         }
-        double l1, l2, l1_plus_l2;
+        double l1, l2, l1_plus_l2, tau_v, v_max, a_max;
         nh_priv_.getParam("rob_dist_between_front_back_wh", l1);
         nh_priv_.getParam("rob_dist_between_left_right_wh", l2);
         l1_plus_l2 = l1 + l2;
+        nh_priv_.getParam("rob_wh_vel_time_const", tau_v);
+        nh_priv_.getParam("rob_wh_max_vel", v_max);
+        nh_priv_.getParam("rob_wh_max_ace", a_max);
+
         ROS_INFO("[%s] Robot distance between wheels (l1 + l2): %lf m", ros::this_node::getName().c_str(), l1_plus_l2);
+        ROS_INFO("[%s] Robot wheel velocity time constant (tau_v): %lf s", ros::this_node::getName().c_str(), tau_v);
+        ROS_INFO("[%s] Robot wheel maximum linear velocity: %lf m/s", ros::this_node::getName().c_str(), v_max);
+        ROS_INFO("[%s] Robot wheel maximum linear acceleration: %lf m/s^2", ros::this_node::getName().c_str(), a_max);
 
         try {
-            mpc_control_ = std::make_unique<NMPCNavControlOmni4>(dt, l1_plus_l2);
+            mpc_control_ = std::make_unique<NMPCNavControlOmni4>(dt, l1_plus_l2, tau_v, v_max, a_max);
             robot_vel_ref_ = std::make_unique<NMPCNavControlOmni4::CmdVelOmni4>();
         } catch (const std::exception& e) {
             ROS_ERROR("[%s] Exception caught: %s. Terminating node.", ros::this_node::getName().c_str(), e.what());
             ros::shutdown();
         }
     } else if (steering_geometry_ == kDiffStr) {
-        if (!nh_priv_.hasParam("rob_dist_between_wh")) {
+        if (!nh_priv_.hasParam("rob_dist_between_wh") ||
+            !nh_priv_.hasParam("rob_wh_vel_time_const") ||
+            !nh_priv_.hasParam("rob_wh_max_vel") ||
+            !nh_priv_.hasParam("rob_wh_max_ace")) {
             throw std::runtime_error("The steering geometry " + steering_geometry_ + " requires the "
-                                     "definition of the following parameter: rob_dist_between_wh");
+                                     "definition of the following parameter: "
+                                     "rob_dist_between_wh, rob_wh_vel_time_const, rob_wh_max_vel, rob_wh_max_ace");
         }
-        double dist_b;
+        double dist_b, tau_v, v_max, a_max;
         nh_priv_.getParam("rob_dist_between_wh", dist_b);
+        nh_priv_.getParam("rob_wh_vel_time_const", tau_v);
+        nh_priv_.getParam("rob_wh_max_vel", v_max);
+        nh_priv_.getParam("rob_wh_max_ace", a_max);
+
         ROS_INFO("[%s] Robot distance between wheels (b): %lf m", ros::this_node::getName().c_str(), dist_b);
+        ROS_INFO("[%s] Robot wheel velocity time constant (tau_v): %lf s", ros::this_node::getName().c_str(), tau_v);
+        ROS_INFO("[%s] Robot wheel maximum linear velocity: %lf m/s", ros::this_node::getName().c_str(), v_max);
+        ROS_INFO("[%s] Robot wheel maximum linear acceleration: %lf m/s^2", ros::this_node::getName().c_str(), a_max);
 
         try {
-            mpc_control_ = std::make_unique<NMPCNavControlDiff>(dt, dist_b);
+            mpc_control_ = std::make_unique<NMPCNavControlDiff>(dt, dist_b, tau_v, v_max, a_max);
             robot_vel_ref_ = std::make_unique<NMPCNavControlDiff::CmdVelDiff>();
         } catch (const std::exception& e) {
             ROS_ERROR("[%s] Exception caught: %s. Terminating node.", ros::this_node::getName().c_str(), e.what());
@@ -107,20 +129,46 @@ void NMPCNavControlROS::readParam()
         }
     } else if (steering_geometry_ == kTricStr) {
         if (!nh_priv_.hasParam("steering_wheel_frame_id") ||
-            !nh_priv_.hasParam("rob_dist_between_steering_back_wh")) {
+            !nh_priv_.hasParam("rob_dist_between_steering_back_wh") ||
+            !nh_priv_.hasParam("rob_wh_vel_time_const") ||
+            !nh_priv_.hasParam("rob_steer_wh_angle_time_const") ||
+            !nh_priv_.hasParam("rob_wh_max_vel") ||
+            !nh_priv_.hasParam("rob_wh_max_ace") ||
+            !nh_priv_.hasParam("rob_steer_wh_min_angle") ||
+            !nh_priv_.hasParam("rob_steer_wh_max_angle") ||
+            !nh_priv_.hasParam("rob_steer_wh_max_angle_var")) {
             throw std::runtime_error("The steering geometry " + steering_geometry_ + " requires the "
                                      "definition of the following parameters: "
-                                     "steering_wheel_frame_id, rob_dist_between_steering_back_wh");
+                                     "steering_wheel_frame_id, rob_dist_between_steering_back_wh, rob_wh_vel_time_const, "
+                                     "rob_wh_max_vel, rob_wh_max_ace, rob_steer_wh_min_angle, rob_steer_wh_max_angle, "
+                                     "rob_steer_wh_max_angle_var");
         }
+        double dist_d, tau_v, tau_a, v_max, a_max, alpha_min, alpha_max, dalpha_max;
         nh_priv_.getParam("steering_wheel_frame_id", steering_wheel_frame_id_);
-        ROS_INFO("[%s] Steering wheel frame ID: %s", ros::this_node::getName().c_str(), steering_wheel_frame_id_.c_str());
-
-        double dist_d;
         nh_priv_.getParam("rob_dist_between_steering_back_wh", dist_d);
+        nh_priv_.getParam("rob_wh_vel_time_const", tau_v);
+        nh_priv_.getParam("rob_steer_wh_angle_time_const", tau_a);
+        nh_priv_.getParam("rob_wh_max_vel", v_max);
+        nh_priv_.getParam("rob_wh_max_ace", a_max);
+        nh_priv_.getParam("rob_steer_wh_min_angle", alpha_min);
+        nh_priv_.getParam("rob_steer_wh_max_angle", alpha_max);
+        nh_priv_.getParam("rob_steer_wh_max_angle_var", dalpha_max);
+        alpha_min = alpha_min * M_PI/180.0;
+        alpha_max = alpha_max * M_PI/180.0;
+        dalpha_max = dalpha_max * M_PI/180.0;
+
+        ROS_INFO("[%s] Steering wheel frame ID: %s", ros::this_node::getName().c_str(), steering_wheel_frame_id_.c_str());
         ROS_INFO("[%s] Robot distance between wheels (d): %lf m", ros::this_node::getName().c_str(), dist_d);
+        ROS_INFO("[%s] Robot wheel velocity time constant (tau_v): %lf s", ros::this_node::getName().c_str(), tau_v);
+        ROS_INFO("[%s] Robot steering wheel angle time constant (tau_a): %lf s", ros::this_node::getName().c_str(), tau_a);
+        ROS_INFO("[%s] Robot wheel maximum linear velocity: %lf m/s", ros::this_node::getName().c_str(), v_max);
+        ROS_INFO("[%s] Robot wheel maximum linear acceleration: %lf m/s^2", ros::this_node::getName().c_str(), a_max);
+        ROS_INFO("[%s] Robot steering wheel minimum angle: %lf deg", ros::this_node::getName().c_str(), alpha_min*180.0/M_PI);
+        ROS_INFO("[%s] Robot steering wheel minimum angle: %lf deg", ros::this_node::getName().c_str(), alpha_max*180.0/M_PI);
+        ROS_INFO("[%s] Robot steering wheel maximum angle variation: %lf deg/s", ros::this_node::getName().c_str(), dalpha_max*180.0/M_PI);
 
         try {
-            mpc_control_ = std::make_unique<NMPCNavControlTric>(dt, dist_d);
+            mpc_control_ = std::make_unique<NMPCNavControlTric>(dt, dist_d, tau_v, tau_a, v_max, a_max, alpha_min, alpha_max, dalpha_max);
             robot_vel_ref_ = std::make_unique<NMPCNavControlTric::CmdVelTric>();
         } catch (const std::exception& e) {
             ROS_ERROR("[%s] Exception caught: %s. Terminating node.", ros::this_node::getName().c_str(), e.what());

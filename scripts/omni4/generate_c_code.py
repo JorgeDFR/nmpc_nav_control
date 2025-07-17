@@ -1,54 +1,61 @@
 import numpy as np
+import casadi as ca
 from acados_template import AcadosOcp, AcadosOcpSolver
+from scipy.linalg import block_diag
 from .common import load_parameters
 from .omni4_amr_model import export_omni4_amr_model
-from casadi import vertcat
-from scipy.linalg import block_diag
 
 def main(params):
-    (N, TF, Q, R, QN, TAU_V, L1_PLUS_L2, V_MAX, A_MAX) = load_parameters(params)
+    (N, TF, L1_PLUS_L2, TAU_V, V_MAX, A_MAX, Q_diag, R_diag, QN_diag) = load_parameters(params)
 
     # create ocp object to formulate the OCP
     ocp = AcadosOcp()
 
     # set model
-    model = export_omni4_amr_model(TAU_V, L1_PLUS_L2)
+    model = export_omni4_amr_model()
     ocp.model = model
+
+    # set default parameter values
+    ocp.parameter_values = np.array([L1_PLUS_L2, TAU_V])
 
     nx = model.x.rows()
     nu = model.u.rows()
     ny = nx + nu  # y is x and u concatenated for compactness of the loss function
-    
+
     # set prediction horizon
     ocp.solver_options.tf = TF
     ocp.solver_options.N_horizon = N
 
     # set path cost
     ocp.cost.cost_type = 'NONLINEAR_LS'
-    ocp.model.cost_y_expr = vertcat(model.x, model.u)
+    ocp.model.cost_y_expr = ca.vertcat(model.x, model.u)
     ocp.cost.yref = np.zeros((ny,))
-    ocp.cost.W = block_diag(Q, R)
+    ocp.cost.W = block_diag(np.diag(Q_diag), np.diag(R_diag))
 
     # terminal cost
     ocp.cost.cost_type_e = 'NONLINEAR_LS'
     ocp.model.cost_y_expr_e = model.x
     ocp.cost.yref_e = np.zeros((nx,))
-    ocp.cost.W_e = QN
+    ocp.cost.W_e = np.diag(QN_diag)
 
     # the 'EXTERNAL' cost type can be used to define general cost terms
     # NOTE: This leads to additional (exact) hessian contributions when using GAUSS_NEWTON hessian.
-    
+
     # set constraints
     ocp.constraints.lbx = np.array([-V_MAX, -V_MAX, -V_MAX, -V_MAX])
     ocp.constraints.ubx = np.array([ V_MAX,  V_MAX,  V_MAX,  V_MAX])
     ocp.constraints.idxbx = np.array([7, 8, 9, 10])
 
+    ocp.constraints.lbx_e = np.array([-V_MAX, -V_MAX, -V_MAX, -V_MAX])
+    ocp.constraints.ubx_e = np.array([ V_MAX,  V_MAX,  V_MAX,  V_MAX])
+    ocp.constraints.idxbx_e = np.array([7, 8, 9, 10])
+
     ocp.constraints.lbu = np.array([-A_MAX, -A_MAX, -A_MAX, -A_MAX])
     ocp.constraints.ubu = np.array([ A_MAX,  A_MAX,  A_MAX,  A_MAX])
     ocp.constraints.idxbu = np.array([0, 1, 2, 3])
-    
+
     # initial state (will be overwritten later)
-    ocp.constraints.x0 = np.array([0.0, 0.0, np.pi, 
+    ocp.constraints.x0 = np.array([0.0, 0.0, np.pi,
                                    0.0, 0.0, 0.0, 0.0,
                                    0.0, 0.0, 0.0, 0.0])
 

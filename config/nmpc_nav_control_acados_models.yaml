@@ -1,72 +1,75 @@
 # Omni4 AMR parameters for the Python script
 omni4_params:
-  tf_ini: 2.0               # [s] desired prediction horizon
-  freq: 40                  # [Hz] controller frequency
+  tf_ini: 2.0                       # [s] desired prediction horizon
+  freq: 40                          # [Hz] controller frequency
 
-  tau_v: 0.1                # [s] robot wheels velocity time constant
-  l1_plus_l2: 0.535         # [m] total robot wheel distances: l1 -> front to back, l2 -> right to left
-  v_max: 1.0                # [m/s] max linear velocity
-  a_max: 1.0                # [m/s^2] max acceleration
+  l1_plus_l2: 0.535                 # [m] total robot wheel distances: l1 -> front to back, l2 -> right to left
+  tau_v: 0.1                        # [s] robot wheels velocity time constant
 
-                            # Path cost: state weights
-  Q: [10.0, 10.0, 10.0,     # robot pose (x, y, theta)
-      0.0, 0.0, 0.0, 0.0,   # robot wheel velocities (v1, v2, v3, v4)
-      0.0, 0.0, 0.0, 0.0]   # robot wheel reference velocities (v1_ref, v2_ref, v3_ref, v4_ref)
+  v_max: 1.0                        # [m/s] max linear velocity
+  a_max: 1.0                        # [m/s^2] max acceleration
 
-                            # Path cost: control weights
-  R: [1.0, 1.0, 1.0, 1.0]   # variation of wheel reference velocities (dv1_ref, dv2_ref, dv3_ref, dv4_ref)
+                                    # Path cost: state weights
+  Q_diag: [10.0, 10.0, 10.0,        # robot pose (x, y, theta)
+           0.0, 0.0, 0.0, 0.0,      # robot wheel velocities (v1, v2, v3, v4)
+           0.0, 0.0, 0.0, 0.0]      # robot wheel reference velocities (v1_ref, v2_ref, v3_ref, v4_ref)
 
-                            # Terminal cost: state weights
-  QN: [10.0, 10.0, 10.0,    # robot pose (x, y, theta)
-       0.0, 0.0, 0.0, 0.0,  # robot wheel velocities (v1, v2, v3, v4)
-       0.0, 0.0, 0.0, 0.0]  # robot wheel reference velocities (v1_ref, v2_ref, v3_ref, v4_ref)
+                                    # Path cost: control weights
+  R_diag: [1.0, 1.0, 1.0, 1.0]      # variation of wheel reference velocities (dv1_ref, dv2_ref, dv3_ref, dv4_ref)
+
+                                    # Terminal cost: state weights
+  QN_diag: [10.0, 10.0, 10.0,       # robot pose (x, y, theta)
+            0.0, 0.0, 0.0, 0.0,     # robot wheel velocities (v1, v2, v3, v4)
+            0.0, 0.0, 0.0, 0.0]     # robot wheel reference velocities (v1_ref, v2_ref, v3_ref, v4_ref)
 
 # Diff AMR parameters for the Python script
 diff_params:
-  tf_ini: 2.0               # [s] desired prediction horizon
-  freq: 40                  # [Hz] controller frequency
+  tf_ini: 2.0                       # [s] desired prediction horizon
+  freq: 40                          # [Hz] controller frequency
 
-  tau_v: 0.1                # [s] robot wheels velocity time constant
-  dist_b: 0.270             # [m] distance between left and right wheels
-  v_max: 1.0                # [m/s] max linear velocity
-  a_max: 2.0                # [m/s^2] max acceleration
+  dist_b: 0.270                     # [m] distance between left and right wheels
+  tau_v: 0.1                        # [s] robot wheels velocity time constant
 
-                            # Path cost: state weights
-  Q: [10.0, 10.0, 5.0,      # robot pose (x, y, theta)
-      0.0, 0.0,             # robot wheel velocities (vl, vr) -> (left, right)
-      0.0, 0.0]             # robot wheel reference velocities (vl_ref, vr_ref)
+  v_max: 1.0                        # [m/s] max linear velocity
+  a_max: 2.0                        # [m/s^2] max acceleration
 
-                            # Path cost: control weights
-  R: [1.0, 1.0]             # variation of wheel reference velocities (dvl_ref, dvr_ref)
+                                    # Path cost: state weights
+  Q_diag: [10.0, 10.0, 5.0,         # robot pose (x, y, theta)
+           0.0, 0.0,                # robot wheel velocities (vl, vr) -> (left, right)
+           0.0, 0.0]                # robot wheel reference velocities (vl_ref, vr_ref)
 
-                               # Terminal cost: state weights
-  QN: [1000.0, 1000.0, 500.0,  # robot pose (x, y, theta)
-       0.0, 0.0,               # robot wheel velocities (vl, vr)
-       0.0, 0.0]               # robot wheel reference velocities (vl_ref, vr_ref)
+                                    # Path cost: control weights
+  R_diag: [1.0, 1.0]                # variation of wheel reference velocities (dvl_ref, dvr_ref)
+
+                                    # Terminal cost: state weights
+  QN_diag: [1000.0, 1000.0, 500.0,  # robot pose (x, y, theta)
+            0.0, 0.0,               # robot wheel velocities (vl, vr)
+            0.0, 0.0]               # robot wheel reference velocities (vl_ref, vr_ref)
 
 # Tric AMR parameters for the Python script
 tric_params:
-  tf_ini: 2.0               # [s] desired prediction horizon
-  freq: 40                  # [Hz] controller frequency
+  tf_ini: 2.0                       # [s] desired prediction horizon
+  freq: 40                          # [Hz] controller frequency
 
-  tau_v: 0.1                # [s] robot wheels velocity time constant
-  tau_a: 0.5                # [s] robot steering angle time constant
-  dist_d: 0.270             # [m] distance between steering wheel and back wheels
-  v_max: 1.0                # [m/s] maximum linear velocity
-  a_max: 1.0                # [m/s^2] maximum acceleration
-  alpha_min: -30.0          # [deg] minimum steering angle
-  alpha_max:  30.0          # [deg] maximum steering angle
-  dalpha_max: 120.0         # [deg/s] maximum steering angular velocity
+  dist_d: 0.270                     # [m] distance between steering wheel and back wheels
+  tau_v: 0.1                        # [s] robot wheels velocity time constant
+  tau_a: 0.5                        # [s] robot steering angle time constant
 
-                            # Path cost: state weights
-  Q: [10.0, 10.0, 5.0,      # robot pose (x, y, theta)
-      0.0, 0.0,             # robot linear velocity (v) and steering angle (alpha)
-      0.0, 0.0]             # robot reference linear velocity (v_ref) and steering angle (alpha_ref)
+  v_max: 1.0                        # [m/s] maximum linear velocity
+  a_max: 1.0                        # [m/s^2] maximum acceleration
+  alpha_min: -30.0                  # [deg] minimum steering angle
+  alpha_max:  30.0                  # [deg] maximum steering angle
+  dalpha_max: 120.0                 # [deg/s] maximum steering angular velocity
 
-                            # Path cost: control weights
-  R: [1.0, 1.0]             # variation of reference velocity (dv_ref) and steering angle (dalpha_ref)
+                                    # Path cost: state weights
+  Q_diag: [10.0, 10.0, 5.0,         # robot pose (x, y, theta)
+           0.0, 0.0,                # robot linear velocity (v) and steering angle (alpha)
+           0.0, 0.0]                # robot reference linear velocity (v_ref) and steering angle (alpha_ref)
 
-                               # Terminal cost: state weights
-  QN: [1000.0, 1000.0, 500.0,  # robot pose (x, y, theta)
-       0.0, 0.0,               # robot linear velocity (v) and steering angle (alpha)
-       0.0, 0.0]               # robot reference linear velocity (v_ref) and steering angle (alpha_ref)
+                                    # Path cost: control weights
+  R_diag: [1.0, 1.0]                # variation of reference velocity (dv_ref) and steering angle (dalpha_ref)
+
+                                    # Terminal cost: state weights
+  QN_diag: [1000.0, 1000.0, 500.0,  # robot pose (x, y, theta)
+            0.0, 0.0,               # robot linear velocity (v) and steering angle (alpha)
+            0.0, 0.0]               # robot reference linear velocity (v_ref) and steering angle (alpha_ref)

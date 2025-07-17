@@ -1,15 +1,35 @@
 global_frame_id: 'map'
 base_frame_id: 'base_footprint'
-steering_wheel_frame_id: 'direction_wheel' # only for tricycle robots
 
 control_freq: 40                           # Hz
 transform_timeout: 0.1                     # seconds
 max_active_path_length: 5.0                # meters
-final_position_error: 0.001                # meters
+final_position_error: 0.01                 # meters
 final_orientation_error: 1.0               # degrees
 
-steering_geometry: omni4                   # can be omni4, diff or tric
-rob_dist_between_front_back_wh: 0.265      # meters (for omni4)
-rob_dist_between_left_right_wh: 0.270      # meters (for omni4)
-rob_dist_between_wh: 0.270                 # meters (for diff)
-rob_dist_between_steering_back_wh: 0.270   # meters (for tric)
+# For omnidiretional robots
+steering_geometry: omni4
+rob_dist_between_front_back_wh: 0.265      # meters
+rob_dist_between_left_right_wh: 0.270      # meters
+rob_wh_vel_time_const: 0.1                 # seconds
+rob_wh_max_vel: 1.0                        # m/s
+rob_wh_max_ace: 1.0                        # m/s^2
+
+# For differential drive robots
+# steering_geometry: diff
+# rob_dist_between_wh: 0.270                 # meters
+# rob_wh_vel_time_const: 0.1                 # seconds
+# rob_wh_max_vel: 1.0                        # m/s
+# rob_wh_max_ace: 1.0                        # m/s^2
+
+# For tricycle robots
+# steering_geometry: tric
+# steering_wheel_frame_id: 'direction_wheel'
+# rob_dist_between_steering_back_wh: 0.270   # meters
+# rob_wh_vel_time_const: 0.1                 # seconds
+# rob_steer_wh_angle_time_const: 0.5         # seconds
+# rob_wh_max_vel: 1.0                        # m/s
+# rob_wh_max_ace: 1.0                        # m/s^2
+# rob_steer_wh_min_angle: -45.0              # degrees
+# rob_steer_wh_max_angle: 45.0               # degrees
+# rob_steer_wh_max_angle_var: 15.0           # degrees/s

@@ -41,21 +41,32 @@ With this version, the package provides the following features:
 - `control_freq` (int, default: `40`): The control loop frequency (Hz)
 - `transform_timeout` (double, default: `0.1`): Timeout for TF transformations (s)
 - `max_active_path_length` (double, default: `5.0`): Maximum active path length (m)
-- `final_position_error` (double, default: `0.001`): Final position tolerance for reaching the goal (m)
+- `final_position_error` (double, default: `0.01`): Final position tolerance for reaching the goal (m)
 - `final_orientation_error` (double, default: `1.0`): Final orientation tolerance for reaching the goal (deg)
 
 #### Omnidirectional (`omni4`)
 - `rob_dist_between_front_back_wh` (double, **required**): Distance between the front and back wheels (m)
 - `rob_dist_between_left_right_wh` (double, **required**): Distance between the left and right wheels (m)
+- `rob_wh_vel_time_const` (double, **required**): Robot wheel velocity time constant (s)
+- `rob_wh_max_vel` (double, **required**): Robot wheel maximum linear velocity (m/s)
+- `rob_wh_max_ace` (double, **required**): Robot wheel maximum linear acceleration (m/s^2)
 
 #### Differential (`diff`)
-
 - `rob_dist_between_wh` (double, **required**): Distance between the left and right wheels (m)
+- `rob_wh_vel_time_const` (double, **required**): Robot wheel velocity time constant (s)
+- `rob_wh_max_vel` (double, **required**): Robot wheel maximum linear velocity (m/s)
+- `rob_wh_max_ace` (double, **required**): Robot wheel maximum linear acceleration (m/s^2)
 
 #### Tricycle (`tric`)
-
 - `steering_wheel_frame_id` (string, **required**): Frame ID for the steering wheel.
 - `rob_dist_between_steering_back_wh` (double, **required**): Distance between the steering wheel and rear wheels (m)
+- `rob_wh_vel_time_const` (double, **required**): Robot wheel velocity time constant (s)
+- `rob_steer_wh_angle_time_const` (double, **required**): Robot steering wheel angle time constant (s)
+- `rob_wh_max_vel` (double, **required**): Robot wheel maximum linear velocity (m/s)
+- `rob_wh_max_ace` (double, **required**): Robot wheel maximum linear acceleration (m/s^2)
+- `rob_steer_wh_min_angle` (double, **required**): Robot steering wheel minimum angle (deg)
+- `rob_steer_wh_max_angle` (double, **required**): Robot steering wheel maximum angle (deg)
+- `rob_steer_wh_max_angle_var` (double, **required**): Robot steering wheel maximum angle variation (deg/s)
 
 ## Subscribes Topics
 
