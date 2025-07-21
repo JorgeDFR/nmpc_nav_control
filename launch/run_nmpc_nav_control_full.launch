@@ -12,11 +12,11 @@
       <param name="global_frame_id" value="$(arg robot_id)/map"/>
       <param name="base_frame_id"   value="$(arg robot_id)/base_footprint"/>
 
-      <param name="control_freq"                   value="40"/>
-      <param name="transform_timeout"              value="0.1"/>
-      <param name="max_active_path_length"         value="5.0"/>
-      <param name="final_position_error"           value="0.01"/>
-      <param name="final_orientation_error"        value="1.0"/>
+      <param name="control_freq"            value="40"/>
+      <param name="transform_timeout"       value="0.1"/>
+      <param name="max_active_path_length"  value="5.0"/>
+      <param name="final_position_error"    value="0.01"/>
+      <param name="final_orientation_error" value="1.0"/>
 
       <!-- For Omnidiretional Robot -->
       <param name="steering_geometry" value="omni4"/>

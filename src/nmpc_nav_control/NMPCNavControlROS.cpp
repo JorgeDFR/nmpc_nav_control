@@ -533,8 +533,8 @@ void NMPCNavControlROS::processFollowPath()
     }
 
     // Check end of trajectory
-    double d = dist(robot_pose_.x, robot_pose_.y, goal_pose_array.begin()->x, goal_pose_array.begin()->y);
-    double ang = normAngRad(robot_pose_.theta - goal_pose_array.begin()->theta);
+    double d = dist(robot_pose_.x, robot_pose_.y, goal_pose_array.back().x, goal_pose_array.back().y);
+    double ang = normAngRad(robot_pose_.theta - goal_pose_array.back().theta);
     if ((d <= final_position_error_) && (ang <= final_orientation_error_)) {
         if (upcoming_path_.size() == 0) { current_status_ = Status::Idle; }
         else {
