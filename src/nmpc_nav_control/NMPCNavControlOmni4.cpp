@@ -175,6 +175,11 @@ bool NMPCNavControlOmni4::run(const Pose& robot_pose, const Vel& robot_vel,
     return true;
 }
 
+bool NMPCNavControlOmni4::reset_mpc()
+{
+    omni4amr_acados_reset(mpc_capsule_, 1);
+    return true;
+}
 
 void NMPCNavControlOmni4::directKinematrics(const double v, const double vn, const double w,
                                             double& v1, double& v2, double& v3, double& v4)

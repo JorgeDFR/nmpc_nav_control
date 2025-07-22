@@ -72,6 +72,7 @@ class NMPCNavControlTric : public NMPCNavControl {
                  const std::list<Pose>& traj_ref,
                  CmdVel& robot_vel_ref, double& cpu_time) override;
 
+        bool reset_mpc() override;
 };
 
 } // namespace nmpc_nav_control

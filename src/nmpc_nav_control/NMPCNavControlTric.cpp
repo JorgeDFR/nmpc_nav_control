@@ -165,4 +165,10 @@ bool NMPCNavControlTric::run(const Pose& robot_pose,  const Vel& robot_vel,
     return true;
 }
 
+bool NMPCNavControlTric::reset_mpc()
+{
+    tric3amr_acados_reset(mpc_capsule_, 1);
+    return true;
+}
+
 } // namespace nmpc_nav_control

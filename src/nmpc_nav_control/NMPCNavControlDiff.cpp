@@ -158,6 +158,11 @@ bool NMPCNavControlDiff::run(const Pose& robot_pose, const Vel& robot_vel,
     return true;
 }
 
+bool NMPCNavControlDiff::reset_mpc()
+{
+    diff2amr_acados_reset(mpc_capsule_, 1);
+    return true;
+}
 
 void NMPCNavControlDiff::directKinematrics(const double v, const double w, double& vl, double& vr)
 {

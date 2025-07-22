@@ -184,12 +184,14 @@ void NMPCNavControlROS::goalPoseReceivedCallback(const geometry_msgs::PoseStampe
     current_status_ = Status::GoToPose;
     goal_pose_.header = msg->header;
     goal_pose_.pose = msg->pose;
+    mpc_control_->reset_mpc();
 }
 
 void NMPCNavControlROS::pathNoStackUpReceivedCallback(const itrci_nav::ParametricPathSet::ConstPtr& msg)
 {
     path_request_id_ = 0; // TODO: ?????
     processPathReceived(*msg);
+    mpc_control_->reset_mpc();
 }
 
 void NMPCNavControlROS::pathNoStackUp2ReceivedCallback(const itrci_nav::ParametricPathSet2::ConstPtr& msg)
@@ -199,6 +201,7 @@ void NMPCNavControlROS::pathNoStackUp2ReceivedCallback(const itrci_nav::Parametr
     path.AuxNum0 = msg->AuxNum0;
     path_request_id_ = msg->request_id; // TODO: ?????
     processPathReceived(path);
+    mpc_control_->reset_mpc();
 }
 
 void NMPCNavControlROS::controlCommandReceivedCallback(const std_msgs::String::ConstPtr& msg)
@@ -296,6 +299,8 @@ bool NMPCNavControlROS::getRobotPose(const std::string& global_frame_id, ros::Ti
         while (curr_theta >= 2.0 * M_PI) { curr_theta -= 2.0 * M_PI; }
         while (curr_theta <= -2.0 * M_PI) { curr_theta += 2.0 * M_PI; }
         robot_pose_.theta = curr_theta;
+
+        std::cout << "Theta: " << robot_pose_.theta << std::endl;
 
         ros::Duration delta_time = current_time - time_stamp;
         if (delta_time.toSec() > transform_timeout_) {

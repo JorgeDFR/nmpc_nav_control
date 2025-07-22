@@ -63,6 +63,8 @@ class NMPCNavControlOmni4 : public NMPCNavControl {
                  const std::list<Pose>& traj_ref,
                  CmdVel& robot_vel_ref, double& cpu_time) override;
 
+        bool reset_mpc() override;
+
     private:
         void directKinematrics(const double v, const double vn, const double w,
                                double& v1, double& v2, double& v3, double& v4);

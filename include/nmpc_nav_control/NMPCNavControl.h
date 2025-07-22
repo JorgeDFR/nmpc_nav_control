@@ -44,6 +44,8 @@ class NMPCNavControl {
                          const std::list<Pose>& traj_ref,
                          CmdVel& robot_vel_ref, double& cpu_time) = 0;
 
+        virtual bool reset_mpc() = 0;
+
         // Attempt to cast to the specific command velocity type
         template<typename T>
         T* getCommandVelocity(CmdVel& cmd_vel) {
