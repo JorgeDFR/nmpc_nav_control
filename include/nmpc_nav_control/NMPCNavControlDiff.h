@@ -54,7 +54,7 @@ class NMPCNavControlDiff : public NMPCNavControl {
         diff2amr_solver_capsule* mpc_capsule_;
 
     public:
-        NMPCNavControlDiff(double dt, double dist_b, double tau_v, double v_max, double a_max);
+        NMPCNavControlDiff(double dt, double dist_b, double tau_v, double v_max, double a_max, std::vector<double> W_diag);
         ~NMPCNavControlDiff();
 
         double getHorizon() override { return DIFF2AMR_N; }

@@ -104,10 +104,13 @@ void NMPCNavControlROS::readParam()
         if (!nh_priv_.hasParam("rob_dist_between_wh") ||
             !nh_priv_.hasParam("rob_wh_vel_time_const") ||
             !nh_priv_.hasParam("rob_wh_max_vel") ||
-            !nh_priv_.hasParam("rob_wh_max_ace")) {
+            !nh_priv_.hasParam("rob_wh_max_ace") ||
+            !nh_priv_.hasParam("cost_matrix_weights_state_diag") ||
+            !nh_priv_.hasParam("cost_matrix_weights_input_diag")) {
             throw std::runtime_error("The steering geometry " + steering_geometry_ + " requires the "
                                      "definition of the following parameter: "
-                                     "rob_dist_between_wh, rob_wh_vel_time_const, rob_wh_max_vel, rob_wh_max_ace");
+                                     "rob_dist_between_wh, rob_wh_vel_time_const, rob_wh_max_vel, rob_wh_max_ace, "
+                                     "cost_matrix_weights_state_diag, cost_matrix_weights_input_diag");
         }
         double dist_b, tau_v, v_max, a_max;
         nh_priv_.getParam("rob_dist_between_wh", dist_b);
@@ -120,8 +123,43 @@ void NMPCNavControlROS::readParam()
         ROS_INFO("[%s] Robot wheel maximum linear velocity: %lf m/s", ros::this_node::getName().c_str(), v_max);
         ROS_INFO("[%s] Robot wheel maximum linear acceleration: %lf m/s^2", ros::this_node::getName().c_str(), a_max);
 
+        XmlRpc::XmlRpcValue Q_param, R_param;
+        nh_priv_.getParam("cost_matrix_weights_state_diag", Q_param);
+        nh_priv_.getParam("cost_matrix_weights_input_diag", R_param);
+        if (Q_param.getType() != XmlRpc::XmlRpcValue::TypeArray || Q_param.size() != 7) {
+            throw std::runtime_error("Parameter 'cost_matrix_weights_state_diag' must be an array of 7 numeric values.");
+        }
+        if (R_param.getType() != XmlRpc::XmlRpcValue::TypeArray || R_param.size() != 2) {
+            throw std::runtime_error("Parameter 'cost_matrix_weights_input_diag' must be an array of 2 numeric values.");
+        }
+
+        std::vector<double> Q_diag(7), R_diag(2);
+        for (int i = 0; i < 7; i++) {
+            if (Q_param[i].getType() != XmlRpc::XmlRpcValue::TypeDouble &&
+                Q_param[i].getType() != XmlRpc::XmlRpcValue::TypeInt) {
+                throw std::runtime_error("Parameter 'cost_matrix_weights_state_diag' must be an array of 7 numeric values.");
+            }
+            Q_diag[i] = static_cast<double>(Q_param[i]);
+        }
+        for (int i = 0; i < 2; i++) {
+            if (R_param[i].getType() != XmlRpc::XmlRpcValue::TypeDouble &&
+                R_param[i].getType() != XmlRpc::XmlRpcValue::TypeInt) {
+                throw std::runtime_error("Parameter 'cost_matrix_weights_input_diag' must be an array of 2 numeric values.");
+            }
+            R_diag[i] = static_cast<double>(R_param[i]);
+        }
+
+        ROS_INFO("[%s] Cost matrix weights regarding the state (diagonal elements): [%lf, %lf, %lf, %lf, %lf, %lf, %lf]",
+                 ros::this_node::getName().c_str(), Q_diag[0], Q_diag[1], Q_diag[2], Q_diag[3], Q_diag[4], Q_diag[5], Q_diag[6]);
+        ROS_INFO("[%s] Cost matrix weights regarding the input (diagonal elements): [%lf, %lf]",
+                 ros::this_node::getName().c_str(), R_diag[0], R_diag[1]);
+
+        std::vector<double> W_diag(9);
+        for (int i = 0; i < 7; i++) { W_diag[i] = Q_diag[i]; }
+        for (int i = 0; i < 2; i++) { W_diag[7+i] = R_diag[i]; }
+
         try {
-            mpc_control_ = std::make_unique<NMPCNavControlDiff>(dt, dist_b, tau_v, v_max, a_max);
+            mpc_control_ = std::make_unique<NMPCNavControlDiff>(dt, dist_b, tau_v, v_max, a_max, W_diag);
             robot_vel_ref_ = std::make_unique<NMPCNavControlDiff::CmdVelDiff>();
         } catch (const std::exception& e) {
             ROS_ERROR("[%s] Exception caught: %s. Terminating node.", ros::this_node::getName().c_str(), e.what());
@@ -299,8 +337,6 @@ bool NMPCNavControlROS::getRobotPose(const std::string& global_frame_id, ros::Ti
         while (curr_theta >= 2.0 * M_PI) { curr_theta -= 2.0 * M_PI; }
         while (curr_theta <= -2.0 * M_PI) { curr_theta += 2.0 * M_PI; }
         robot_pose_.theta = curr_theta;
-
-        std::cout << "Theta: " << robot_pose_.theta << std::endl;
 
         ros::Duration delta_time = current_time - time_stamp;
         if (delta_time.toSec() > transform_timeout_) {
