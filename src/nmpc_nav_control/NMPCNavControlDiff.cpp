@@ -124,19 +124,19 @@ bool NMPCNavControlDiff::run(const Pose& robot_pose, const Vel& robot_vel,
     }
 
     // Hack to change terminal costs in the middle of the control loop (kind of adaptive control)
-    // if ((acados_in_.yref[DIFF2AMR_N][x] == acados_in_.yref[DIFF2AMR_N-1][x]) &&
-    //     (acados_in_.yref[DIFF2AMR_N][y] == acados_in_.yref[DIFF2AMR_N-1][y]) &&
-    //     (acados_in_.yref[DIFF2AMR_N][theta] == acados_in_.yref[DIFF2AMR_N-1][theta])) {
-    //     acados_p_.W_e[0+(DIFF2AMR_NYN) * 0] = 100.0 * acados_p_.W[0+(DIFF2AMR_NY) * 0];
-    //     acados_p_.W_e[1+(DIFF2AMR_NYN) * 1] = 100.0 * acados_p_.W[1+(DIFF2AMR_NY) * 1];
-    //     acados_p_.W_e[2+(DIFF2AMR_NYN) * 2] = 100.0 * acados_p_.W[2+(DIFF2AMR_NY) * 2];
-    // } else {
-    //     acados_p_.W_e[0+(DIFF2AMR_NYN) * 0] = acados_p_.W[0+(DIFF2AMR_NY) * 0];
-    //     acados_p_.W_e[1+(DIFF2AMR_NYN) * 1] = acados_p_.W[1+(DIFF2AMR_NY) * 1];
-    //     acados_p_.W_e[2+(DIFF2AMR_NYN) * 2] = acados_p_.W[2+(DIFF2AMR_NY) * 2];
-    // }
-    // ocp_nlp_cost_model_set(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims,
-    //                        mpc_capsule_->nlp_in, DIFF2AMR_N, "W", acados_p_.W_e);
+    if ((acados_in_.yref[DIFF2AMR_N][x] == acados_in_.yref[DIFF2AMR_N-1][x]) &&
+        (acados_in_.yref[DIFF2AMR_N][y] == acados_in_.yref[DIFF2AMR_N-1][y]) &&
+        (acados_in_.yref[DIFF2AMR_N][theta] == acados_in_.yref[DIFF2AMR_N-1][theta])) {
+        acados_p_.W_e[0+(DIFF2AMR_NYN) * 0] = 100.0 * acados_p_.W[0+(DIFF2AMR_NY) * 0];
+        acados_p_.W_e[1+(DIFF2AMR_NYN) * 1] = 100.0 * acados_p_.W[1+(DIFF2AMR_NY) * 1];
+        acados_p_.W_e[2+(DIFF2AMR_NYN) * 2] = 100.0 * acados_p_.W[2+(DIFF2AMR_NY) * 2];
+    } else {
+        acados_p_.W_e[0+(DIFF2AMR_NYN) * 0] = acados_p_.W[0+(DIFF2AMR_NY) * 0];
+        acados_p_.W_e[1+(DIFF2AMR_NYN) * 1] = acados_p_.W[1+(DIFF2AMR_NY) * 1];
+        acados_p_.W_e[2+(DIFF2AMR_NYN) * 2] = acados_p_.W[2+(DIFF2AMR_NY) * 2];
+    }
+    ocp_nlp_cost_model_set(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims,
+                           mpc_capsule_->nlp_in, DIFF2AMR_N, "W", acados_p_.W_e);
 
     // Solve optimization problem
     int acados_status = diff2amr_acados_solve(mpc_capsule_);
