@@ -54,7 +54,7 @@ class NMPCNavControlOmni4 : public NMPCNavControl {
         omni4amr_solver_capsule* mpc_capsule_;
 
     public:
-        NMPCNavControlOmni4(double dt, double l1_plus_l2, double tau_v, double v_max, double a_max);
+        NMPCNavControlOmni4(double dt, double l1_plus_l2, double tau_v, double v_max, double a_max, std::vector<double> W_diag);
         ~NMPCNavControlOmni4();
 
         double getHorizon() override { return OMNI4AMR_N; }

@@ -30,7 +30,7 @@ With this version, the package provides the following features:
 - [geometry_msgs](https://index.ros.org/p/geometry_msgs/)
 - [itrci_nav](https://gitlab.inesctec.pt/CRIIS/inesctec_robotics_custom_interfaces_stack/-/tree/main/itrci_nav)
 - [parametric_trajectories_common](https://gitlab.inesctec.pt/mrdt/msc/trajectory-control-and-collision-avoidance-for-a-mobile-robot/parametric_trajectories_stack/-/tree/main)
-- [Eigen3](https://devdocs.io/eigen3/)
+- [Eigen3](https://neuro.debian.net/pkgs/libeigen3-dev.html)
 - [acados](https://docs.acados.org/)
 
 ## Parameters
@@ -50,12 +50,16 @@ With this version, the package provides the following features:
 - `rob_wh_vel_time_const` (double, **required**): Robot wheel velocity time constant (s)
 - `rob_wh_max_vel` (double, **required**): Robot wheel maximum linear velocity (m/s)
 - `rob_wh_max_ace` (double, **required**): Robot wheel maximum linear acceleration (m/s^2)
+- `cost_matrix_weights_state_diag` (array, **required**): Cost matrix weights regarding the state (diagonal elements)
+- `cost_matrix_weights_input_diag` (array, **required**): Cost matrix weights regarding the input (diagonal elements)
 
 #### Differential (`diff`)
 - `rob_dist_between_wh` (double, **required**): Distance between the left and right wheels (m)
 - `rob_wh_vel_time_const` (double, **required**): Robot wheel velocity time constant (s)
 - `rob_wh_max_vel` (double, **required**): Robot wheel maximum linear velocity (m/s)
 - `rob_wh_max_ace` (double, **required**): Robot wheel maximum linear acceleration (m/s^2)
+- `cost_matrix_weights_state_diag` (array, **required**): Cost matrix weights regarding the state (diagonal elements)
+- `cost_matrix_weights_input_diag` (array, **required**): Cost matrix weights regarding the input (diagonal elements)
 
 #### Tricycle (`tric`)
 - `steering_wheel_frame_id` (string, **required**): Frame ID for the steering wheel.
@@ -67,6 +71,8 @@ With this version, the package provides the following features:
 - `rob_steer_wh_min_angle` (double, **required**): Robot steering wheel minimum angle (deg)
 - `rob_steer_wh_max_angle` (double, **required**): Robot steering wheel maximum angle (deg)
 - `rob_steer_wh_max_angle_var` (double, **required**): Robot steering wheel maximum angle variation (deg/s)
+- `cost_matrix_weights_state_diag` (array, **required**): Cost matrix weights regarding the state (diagonal elements)
+- `cost_matrix_weights_input_diag` (array, **required**): Cost matrix weights regarding the input (diagonal elements)
 
 ## Subscribes Topics
 
@@ -126,9 +132,6 @@ roslaunch nmpc_nav_control run_nmpc_nav_control.launch
 
 # Optional: Generate updated acados solvers libraries via ROS
 roslaunch nmpc_nav_control run_nmpc_nav_control_generate_libs.launch
-
-# Optional: Generate updated acados solvers libraries via ROS and launch main node
-roslaunch nmpc_nav_control run_nmpc_nav_control_full.launch
 ```
 
 ## Acknowledges

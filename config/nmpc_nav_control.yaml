@@ -14,6 +14,10 @@ rob_dist_between_left_right_wh: 0.270      # meters
 rob_wh_vel_time_const: 0.1                 # seconds
 rob_wh_max_vel: 1.0                        # m/s
 rob_wh_max_ace: 1.0                        # m/s^2
+cost_matrix_weights_state_diag: [10.0, 10.0, 5.0,
+                                 0.0, 0.0, 0.0, 0.0
+                                 0.0, 0.0, 0.0, 0.0]
+cost_matrix_weights_input_diag: [1.0, 1.0, 1.0, 1.0]
 
 # For differential drive robots
 # steering_geometry: diff
@@ -21,6 +25,10 @@ rob_wh_max_ace: 1.0                        # m/s^2
 # rob_wh_vel_time_const: 0.1                 # seconds
 # rob_wh_max_vel: 1.0                        # m/s
 # rob_wh_max_ace: 1.0                        # m/s^2
+# cost_matrix_weights_state_diag: [10.0, 10.0, 5.0,
+#                                  0.0, 0.0,
+#                                  0.0, 0.0]
+# cost_matrix_weights_input_diag: [1.0, 1.0]
 
 # For tricycle robots
 # steering_geometry: tric
@@ -33,3 +41,7 @@ rob_wh_max_ace: 1.0                        # m/s^2
 # rob_steer_wh_min_angle: -45.0              # degrees
 # rob_steer_wh_max_angle: 45.0               # degrees
 # rob_steer_wh_max_angle_var: 15.0           # degrees/s
+# cost_matrix_weights_state_diag: [10.0, 10.0, 5.0,
+#                                  0.0, 0.0,
+#                                  0.0, 0.0]
+# cost_matrix_weights_input_diag: [1.0, 1.0]

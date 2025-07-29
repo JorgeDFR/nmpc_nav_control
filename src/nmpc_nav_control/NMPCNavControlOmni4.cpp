@@ -2,7 +2,8 @@
 
 namespace nmpc_nav_control {
 
-NMPCNavControlOmni4::NMPCNavControlOmni4(double dt, double l1_plus_l2, double tau_v, double v_max, double a_max) : NMPCNavControl(dt)
+NMPCNavControlOmni4::NMPCNavControlOmni4(double dt, double l1_plus_l2, double tau_v, double v_max, double a_max,
+                                         std::vector<double> W_diag) : NMPCNavControl(dt)
 {
     // Initialize MPC
     mpc_capsule_ = omni4amr_acados_create_capsule();
@@ -20,33 +21,33 @@ NMPCNavControlOmni4::NMPCNavControlOmni4(double dt, double l1_plus_l2, double ta
     acados_p_.u_max[0] = acados_p_.u_max[1] = acados_p_.u_max[2] = acados_p_.u_max[3] =  a_max;
 
     for (unsigned int i = 0; i < OMNI4AMR_NY*OMNI4AMR_NY; i++) { acados_p_.W[i] = 0.0; }
-    // acados_p_.W[0+(OMNI4AMR_NY) * 0] = 10.0;
-    // acados_p_.W[1+(OMNI4AMR_NY) * 1] = 10.0;
-    // acados_p_.W[2+(OMNI4AMR_NY) * 2] = 10.0;
-    // acados_p_.W[3+(OMNI4AMR_NY) * 3] = 0.0;
-    // acados_p_.W[4+(OMNI4AMR_NY) * 4] = 0.0;
-    // acados_p_.W[5+(OMNI4AMR_NY) * 5] = 0.0;
-    // acados_p_.W[6+(OMNI4AMR_NY) * 6] = 0.0;
-    // acados_p_.W[7+(OMNI4AMR_NY) * 7] = 0.0;
-    // acados_p_.W[8+(OMNI4AMR_NY) * 8] = 0.0;
-    // acados_p_.W[9+(OMNI4AMR_NY) * 9] = 0.0;
-    // acados_p_.W[10+(OMNI4AMR_NY) * 10] = 0.0;
-    // acados_p_.W[11+(OMNI4AMR_NY) * 11] = 1.0;
-    // acados_p_.W[12+(OMNI4AMR_NY) * 12] = 1.0;
-    // acados_p_.W[13+(OMNI4AMR_NY) * 13] = 1.0;
-    // acados_p_.W[14+(OMNI4AMR_NY) * 14] = 1.0;
+    acados_p_.W[0+(OMNI4AMR_NY) * 0] = W_diag[0];
+    acados_p_.W[1+(OMNI4AMR_NY) * 1] = W_diag[1];
+    acados_p_.W[2+(OMNI4AMR_NY) * 2] = W_diag[2];
+    acados_p_.W[3+(OMNI4AMR_NY) * 3] = W_diag[3];
+    acados_p_.W[4+(OMNI4AMR_NY) * 4] = W_diag[4];
+    acados_p_.W[5+(OMNI4AMR_NY) * 5] = W_diag[5];
+    acados_p_.W[6+(OMNI4AMR_NY) * 6] = W_diag[6];
+    acados_p_.W[7+(OMNI4AMR_NY) * 7] = W_diag[7];
+    acados_p_.W[8+(OMNI4AMR_NY) * 8] = W_diag[8];
+    acados_p_.W[9+(OMNI4AMR_NY) * 9] = W_diag[9];
+    acados_p_.W[10+(OMNI4AMR_NY) * 10] = W_diag[10];
+    acados_p_.W[11+(OMNI4AMR_NY) * 11] = W_diag[11];
+    acados_p_.W[12+(OMNI4AMR_NY) * 12] = W_diag[12];
+    acados_p_.W[13+(OMNI4AMR_NY) * 13] = W_diag[13];
+    acados_p_.W[14+(OMNI4AMR_NY) * 14] = W_diag[14];
     for (unsigned int i = 0; i < OMNI4AMR_NYN*OMNI4AMR_NYN; i++) { acados_p_.W_e[i] = 0.0; }
-    // acados_p_.W_e[0+(OMNI4AMR_NYN) * 0] = 10.0;
-    // acados_p_.W_e[1+(OMNI4AMR_NYN) * 1] = 10.0;
-    // acados_p_.W_e[2+(OMNI4AMR_NYN) * 2] = 10.0;
-    // acados_p_.W_e[3+(OMNI4AMR_NYN) * 3] = 0.0;
-    // acados_p_.W_e[4+(OMNI4AMR_NYN) * 4] = 0.0;
-    // acados_p_.W_e[5+(OMNI4AMR_NYN) * 5] = 0.0;
-    // acados_p_.W_e[6+(OMNI4AMR_NYN) * 6] = 0.0;
-    // acados_p_.W_e[7+(OMNI4AMR_NYN) * 7] = 0.0;
-    // acados_p_.W_e[8+(OMNI4AMR_NYN) * 8] = 0.0;
-    // acados_p_.W_e[9+(OMNI4AMR_NYN) * 9] = 0.0;
-    // acados_p_.W_e[10+(OMNI4AMR_NYN) * 10] = 0.0;
+    acados_p_.W_e[0+(OMNI4AMR_NYN) * 0] = W_diag[0];
+    acados_p_.W_e[1+(OMNI4AMR_NYN) * 1] = W_diag[1];
+    acados_p_.W_e[2+(OMNI4AMR_NYN) * 2] = W_diag[2];
+    acados_p_.W_e[3+(OMNI4AMR_NYN) * 3] = W_diag[3];
+    acados_p_.W_e[4+(OMNI4AMR_NYN) * 4] = W_diag[4];
+    acados_p_.W_e[5+(OMNI4AMR_NYN) * 5] = W_diag[5];
+    acados_p_.W_e[6+(OMNI4AMR_NYN) * 6] = W_diag[6];
+    acados_p_.W_e[7+(OMNI4AMR_NYN) * 7] = W_diag[7];
+    acados_p_.W_e[8+(OMNI4AMR_NYN) * 8] = W_diag[8];
+    acados_p_.W_e[9+(OMNI4AMR_NYN) * 9] = W_diag[9];
+    acados_p_.W_e[10+(OMNI4AMR_NYN) * 10] = W_diag[10];
 
     // Set model parameters
     for (unsigned int i = 0; i < OMNI4AMR_N; i++) {
@@ -73,12 +74,12 @@ NMPCNavControlOmni4::NMPCNavControlOmni4(double dt, double l1_plus_l2, double ta
     }
 
     // Set cost function weights
-    // for (unsigned int i = 0; i < OMNI4AMR_N; i++) {
-    //     ocp_nlp_cost_model_set(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims,
-    //                            mpc_capsule_->nlp_in, i, "W", acados_p_.W);
-    // }
-    // ocp_nlp_cost_model_set(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims,
-    //                        mpc_capsule_->nlp_in, OMNI4AMR_N, "W", acados_p_.W_e);
+    for (unsigned int i = 0; i < OMNI4AMR_N; i++) {
+        ocp_nlp_cost_model_set(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims,
+                               mpc_capsule_->nlp_in, i, "W", acados_p_.W);
+    }
+    ocp_nlp_cost_model_set(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims,
+                           mpc_capsule_->nlp_in, OMNI4AMR_N, "W", acados_p_.W_e);
 }
 
 NMPCNavControlOmni4::~NMPCNavControlOmni4()

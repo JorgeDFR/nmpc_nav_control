@@ -59,7 +59,7 @@ class NMPCNavControlTric : public NMPCNavControl {
 
     public:
         NMPCNavControlTric(double dt, double dist_d, double tau_v, double tau_a, double v_max, double a_max,
-                           double alpha_min, double alpha_max, double dalpha_max);
+                           double alpha_min, double alpha_max, double dalpha_max, std::vector<double> W_diag);
         ~NMPCNavControlTric();
 
         double getHorizon() override { return TRIC3AMR_N; }

@@ -3,7 +3,8 @@
 namespace nmpc_nav_control {
 
 NMPCNavControlTric::NMPCNavControlTric(double dt, double dist_d, double tau_v, double tau_a, double v_max, double a_max,
-                                       double alpha_min, double alpha_max, double dalpha_max) : NMPCNavControl(dt)
+                                       double alpha_min, double alpha_max, double dalpha_max,
+                                       std::vector<double> W_diag) : NMPCNavControl(dt)
 {
     // Initialize MPC
     mpc_capsule_ = tric3amr_acados_create_capsule();
@@ -28,24 +29,23 @@ NMPCNavControlTric::NMPCNavControlTric(double dt, double dist_d, double tau_v, d
     acados_p_.u_max[1] =  dalpha_max;
 
     for (unsigned int i = 0; i < TRIC3AMR_NY*TRIC3AMR_NY; i++) { acados_p_.W[i] = 0.0; }
-    // acados_p_.W[0+(TRIC3AMR_NY) * 0] = 10.0;
-    // acados_p_.W[1+(TRIC3AMR_NY) * 1] = 10.0;
-    // acados_p_.W[2+(TRIC3AMR_NY) * 2] = 5.0;
-    // acados_p_.W[3+(TRIC3AMR_NY) * 3] = 0.0;
-    // acados_p_.W[4+(TRIC3AMR_NY) * 4] = 0.0;
-    // acados_p_.W[5+(TRIC3AMR_NY) * 5] = 0.0;
-    // acados_p_.W[6+(TRIC3AMR_NY) * 6] = 0.0;
-    // acados_p_.W[7+(TRIC3AMR_NY) * 7] = 1.0;
-    // acados_p_.W[8+(TRIC3AMR_NY) * 8] = 1.0;
+    acados_p_.W[0+(TRIC3AMR_NY) * 0] = W_diag[0];
+    acados_p_.W[1+(TRIC3AMR_NY) * 1] = W_diag[1];
+    acados_p_.W[2+(TRIC3AMR_NY) * 2] = W_diag[2];
+    acados_p_.W[3+(TRIC3AMR_NY) * 3] = W_diag[3];
+    acados_p_.W[4+(TRIC3AMR_NY) * 4] = W_diag[4];
+    acados_p_.W[5+(TRIC3AMR_NY) * 5] = W_diag[5];
+    acados_p_.W[6+(TRIC3AMR_NY) * 6] = W_diag[6];
+    acados_p_.W[7+(TRIC3AMR_NY) * 7] = W_diag[7];
+    acados_p_.W[8+(TRIC3AMR_NY) * 8] = W_diag[8];
     for (unsigned int i = 0; i < TRIC3AMR_NYN*TRIC3AMR_NYN; i++) { acados_p_.W_e[i] = 0.0; }
-    // acados_p_.W_e[0+(TRIC3AMR_NYN) * 0] = 1000.0;
-    // acados_p_.W_e[1+(TRIC3AMR_NYN) * 1] = 1000.0;
-    // acados_p_.W_e[2+(TRIC3AMR_NYN) * 2] = 500.0;
-    // acados_p_.W_e[3+(TRIC3AMR_NYN) * 3] = 0.0;
-    // acados_p_.W_e[4+(TRIC3AMR_NYN) * 4] = 0.0;
-    // acados_p_.W_e[5+(TRIC3AMR_NYN) * 5] = 0.0;
-    // acados_p_.W_e[6+(TRIC3AMR_NYN) * 6] = 0.0;
-
+    acados_p_.W_e[0+(TRIC3AMR_NYN) * 0] = W_diag[0];
+    acados_p_.W_e[1+(TRIC3AMR_NYN) * 1] = W_diag[1];
+    acados_p_.W_e[2+(TRIC3AMR_NYN) * 2] = W_diag[2];
+    acados_p_.W_e[3+(TRIC3AMR_NYN) * 3] = W_diag[3];
+    acados_p_.W_e[4+(TRIC3AMR_NYN) * 4] = W_diag[4];
+    acados_p_.W_e[5+(TRIC3AMR_NYN) * 5] = W_diag[5];
+    acados_p_.W_e[6+(TRIC3AMR_NYN) * 6] = W_diag[6];
     // Set model parameters
     for (unsigned int i = 0; i < TRIC3AMR_N; i++) {
         tric3amr_acados_update_params(mpc_capsule_, i, acados_p_.p, TRIC3AMR_NP);
@@ -71,12 +71,12 @@ NMPCNavControlTric::NMPCNavControlTric(double dt, double dist_d, double tau_v, d
     }
 
     // Set cost function weights
-    // for (unsigned int i = 0; i < TRIC3AMR_N; i++) {
-    //     ocp_nlp_cost_model_set(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims,
-    //                            mpc_capsule_->nlp_in, i, "W", acados_p_.W);
-    // }
-    // ocp_nlp_cost_model_set(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims,
-    //                        mpc_capsule_->nlp_in, TRIC3AMR_N, "W", acados_p_.W_e);
+    for (unsigned int i = 0; i < TRIC3AMR_N; i++) {
+        ocp_nlp_cost_model_set(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims,
+                               mpc_capsule_->nlp_in, i, "W", acados_p_.W);
+    }
+    ocp_nlp_cost_model_set(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims,
+                           mpc_capsule_->nlp_in, TRIC3AMR_N, "W", acados_p_.W_e);
 }
 
 NMPCNavControlTric::~NMPCNavControlTric()
@@ -127,6 +127,21 @@ bool NMPCNavControlTric::run(const Pose& robot_pose,  const Vel& robot_vel,
                                mpc_capsule_->nlp_in, i, "yref", acados_in_.yref[i]);
     }
 
+    // Hack to change terminal costs in the middle of the control loop (kind of adaptive control)
+    if ((acados_in_.yref[TRIC3AMR_N][x] == acados_in_.yref[TRIC3AMR_N-1][x]) &&
+        (acados_in_.yref[TRIC3AMR_N][y] == acados_in_.yref[TRIC3AMR_N-1][y]) &&
+        (acados_in_.yref[TRIC3AMR_N][theta] == acados_in_.yref[TRIC3AMR_N-1][theta])) {
+        acados_p_.W_e[0+(TRIC3AMR_NYN) * 0] = 100.0 * acados_p_.W[0+(TRIC3AMR_NY) * 0];
+        acados_p_.W_e[1+(TRIC3AMR_NYN) * 1] = 100.0 * acados_p_.W[1+(TRIC3AMR_NY) * 1];
+        acados_p_.W_e[2+(TRIC3AMR_NYN) * 2] = 100.0 * acados_p_.W[2+(TRIC3AMR_NY) * 2];
+    } else {
+        acados_p_.W_e[0+(TRIC3AMR_NYN) * 0] = acados_p_.W[0+(TRIC3AMR_NY) * 0];
+        acados_p_.W_e[1+(TRIC3AMR_NYN) * 1] = acados_p_.W[1+(TRIC3AMR_NY) * 1];
+        acados_p_.W_e[2+(TRIC3AMR_NYN) * 2] = acados_p_.W[2+(TRIC3AMR_NY) * 2];
+    }
+    ocp_nlp_cost_model_set(mpc_capsule_->nlp_config, mpc_capsule_->nlp_dims,
+                           mpc_capsule_->nlp_in, TRIC3AMR_N, "W", acados_p_.W_e);
+
     // Solve optimization problem
     int acados_status = tric3amr_acados_solve(mpc_capsule_);
     if (!processAcadosStatus(acados_status)) { return false; }
@@ -142,8 +157,8 @@ bool NMPCNavControlTric::run(const Pose& robot_pose,  const Vel& robot_vel,
 
     // Get reference velocities for the robot
     double new_v_ref, new_alpha_ref;
-    new_v_ref = acados_in_.x0[v_ref] + acados_out_.u0[v_ref]*dt_;
-    new_alpha_ref = acados_in_.x0[alpha_ref] + acados_out_.u0[alpha_ref]*dt_;
+    new_v_ref = acados_in_.x0[v_ref] + acados_out_.u0[dv_ref]*dt_;
+    new_alpha_ref = acados_in_.x0[alpha_ref] + acados_out_.u0[dalpha_ref]*dt_;
 
     // Cast CmdVel to CmdVelTric
     CmdVelTric* cmd_vel_tric = getCommandVelocity<CmdVelTric>(robot_vel_ref);

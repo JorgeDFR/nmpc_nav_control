@@ -78,7 +78,8 @@ void NMPCNavControlROS::readParam()
             throw std::runtime_error("The steering geometry " + steering_geometry_ + " requires the "
                                      "definition of the following parameters: "
                                      "rob_dist_between_front_back_wh, rob_dist_between_left_right_wh, "
-                                     "rob_wh_vel_time_const, rob_wh_max_vel, rob_wh_max_ace");
+                                     "rob_wh_vel_time_const, rob_wh_max_vel, rob_wh_max_ace, "
+                                     "cost_matrix_weights_state_diag, cost_matrix_weights_input_diag");
         }
         double l1, l2, l1_plus_l2, tau_v, v_max, a_max;
         nh_priv_.getParam("rob_dist_between_front_back_wh", l1);
@@ -93,8 +94,44 @@ void NMPCNavControlROS::readParam()
         ROS_INFO("[%s] Robot wheel maximum linear velocity: %lf m/s", ros::this_node::getName().c_str(), v_max);
         ROS_INFO("[%s] Robot wheel maximum linear acceleration: %lf m/s^2", ros::this_node::getName().c_str(), a_max);
 
+        XmlRpc::XmlRpcValue Q_param, R_param;
+        nh_priv_.getParam("cost_matrix_weights_state_diag", Q_param);
+        nh_priv_.getParam("cost_matrix_weights_input_diag", R_param);
+        if (Q_param.getType() != XmlRpc::XmlRpcValue::TypeArray || Q_param.size() != 11) {
+            throw std::runtime_error("Parameter 'cost_matrix_weights_state_diag' must be an array of 11 numeric values.");
+        }
+        if (R_param.getType() != XmlRpc::XmlRpcValue::TypeArray || R_param.size() != 4) {
+            throw std::runtime_error("Parameter 'cost_matrix_weights_input_diag' must be an array of 4 numeric values.");
+        }
+
+        std::vector<double> Q_diag(11), R_diag(4);
+        for (int i = 0; i < 11; i++) {
+            if (Q_param[i].getType() != XmlRpc::XmlRpcValue::TypeDouble &&
+                Q_param[i].getType() != XmlRpc::XmlRpcValue::TypeInt) {
+                throw std::runtime_error("Parameter 'cost_matrix_weights_state_diag' must be an array of 11 numeric values.");
+            }
+            Q_diag[i] = static_cast<double>(Q_param[i]);
+        }
+        for (int i = 0; i < 4; i++) {
+            if (R_param[i].getType() != XmlRpc::XmlRpcValue::TypeDouble &&
+                R_param[i].getType() != XmlRpc::XmlRpcValue::TypeInt) {
+                throw std::runtime_error("Parameter 'cost_matrix_weights_input_diag' must be an array of 4 numeric values.");
+            }
+            R_diag[i] = static_cast<double>(R_param[i]);
+        }
+
+        ROS_INFO("[%s] Cost matrix weights regarding the state (diagonal elements): [%lf, %lf, %lf, %lf, %lf, %lf, %lf, %lf, %lf, %lf, %lf]",
+                 ros::this_node::getName().c_str(), Q_diag[0], Q_diag[1], Q_diag[2], Q_diag[3], Q_diag[4], Q_diag[5],
+                                                    Q_diag[6], Q_diag[7], Q_diag[8], Q_diag[9], Q_diag[10]);
+        ROS_INFO("[%s] Cost matrix weights regarding the input (diagonal elements): [%lf, %lf, %lf, %lf]",
+                 ros::this_node::getName().c_str(), R_diag[0], R_diag[1], R_diag[2], R_diag[4]);
+
+        std::vector<double> W_diag(15);
+        for (int i = 0; i < 11; i++) { W_diag[i] = Q_diag[i]; }
+        for (int i = 0; i < 4; i++) { W_diag[11+i] = R_diag[i]; }
+
         try {
-            mpc_control_ = std::make_unique<NMPCNavControlOmni4>(dt, l1_plus_l2, tau_v, v_max, a_max);
+            mpc_control_ = std::make_unique<NMPCNavControlOmni4>(dt, l1_plus_l2, tau_v, v_max, a_max, W_diag);
             robot_vel_ref_ = std::make_unique<NMPCNavControlOmni4::CmdVelOmni4>();
         } catch (const std::exception& e) {
             ROS_ERROR("[%s] Exception caught: %s. Terminating node.", ros::this_node::getName().c_str(), e.what());
@@ -179,7 +216,8 @@ void NMPCNavControlROS::readParam()
                                      "definition of the following parameters: "
                                      "steering_wheel_frame_id, rob_dist_between_steering_back_wh, rob_wh_vel_time_const, "
                                      "rob_wh_max_vel, rob_wh_max_ace, rob_steer_wh_min_angle, rob_steer_wh_max_angle, "
-                                     "rob_steer_wh_max_angle_var");
+                                     "rob_steer_wh_max_angle_var, "
+                                     "cost_matrix_weights_state_diag, cost_matrix_weights_input_diag");
         }
         double dist_d, tau_v, tau_a, v_max, a_max, alpha_min, alpha_max, dalpha_max;
         nh_priv_.getParam("steering_wheel_frame_id", steering_wheel_frame_id_);
@@ -205,8 +243,43 @@ void NMPCNavControlROS::readParam()
         ROS_INFO("[%s] Robot steering wheel minimum angle: %lf deg", ros::this_node::getName().c_str(), alpha_max*180.0/M_PI);
         ROS_INFO("[%s] Robot steering wheel maximum angle variation: %lf deg/s", ros::this_node::getName().c_str(), dalpha_max*180.0/M_PI);
 
+        XmlRpc::XmlRpcValue Q_param, R_param;
+        nh_priv_.getParam("cost_matrix_weights_state_diag", Q_param);
+        nh_priv_.getParam("cost_matrix_weights_input_diag", R_param);
+        if (Q_param.getType() != XmlRpc::XmlRpcValue::TypeArray || Q_param.size() != 7) {
+            throw std::runtime_error("Parameter 'cost_matrix_weights_state_diag' must be an array of 7 numeric values.");
+        }
+        if (R_param.getType() != XmlRpc::XmlRpcValue::TypeArray || R_param.size() != 2) {
+            throw std::runtime_error("Parameter 'cost_matrix_weights_input_diag' must be an array of 2 numeric values.");
+        }
+
+        std::vector<double> Q_diag(7), R_diag(2);
+        for (int i = 0; i < 7; i++) {
+            if (Q_param[i].getType() != XmlRpc::XmlRpcValue::TypeDouble &&
+                Q_param[i].getType() != XmlRpc::XmlRpcValue::TypeInt) {
+                throw std::runtime_error("Parameter 'cost_matrix_weights_state_diag' must be an array of 7 numeric values.");
+            }
+            Q_diag[i] = static_cast<double>(Q_param[i]);
+        }
+        for (int i = 0; i < 2; i++) {
+            if (R_param[i].getType() != XmlRpc::XmlRpcValue::TypeDouble &&
+                R_param[i].getType() != XmlRpc::XmlRpcValue::TypeInt) {
+                throw std::runtime_error("Parameter 'cost_matrix_weights_input_diag' must be an array of 2 numeric values.");
+            }
+            R_diag[i] = static_cast<double>(R_param[i]);
+        }
+
+        ROS_INFO("[%s] Cost matrix weights regarding the state (diagonal elements): [%lf, %lf, %lf, %lf, %lf, %lf, %lf]",
+                 ros::this_node::getName().c_str(), Q_diag[0], Q_diag[1], Q_diag[2], Q_diag[3], Q_diag[4], Q_diag[5], Q_diag[6]);
+        ROS_INFO("[%s] Cost matrix weights regarding the input (diagonal elements): [%lf, %lf]",
+                 ros::this_node::getName().c_str(), R_diag[0], R_diag[1]);
+
+        std::vector<double> W_diag(9);
+        for (int i = 0; i < 7; i++) { W_diag[i] = Q_diag[i]; }
+        for (int i = 0; i < 2; i++) { W_diag[7+i] = R_diag[i]; }
+
         try {
-            mpc_control_ = std::make_unique<NMPCNavControlTric>(dt, dist_d, tau_v, tau_a, v_max, a_max, alpha_min, alpha_max, dalpha_max);
+            mpc_control_ = std::make_unique<NMPCNavControlTric>(dt, dist_d, tau_v, tau_a, v_max, a_max, alpha_min, alpha_max, dalpha_max, W_diag);
             robot_vel_ref_ = std::make_unique<NMPCNavControlTric::CmdVelTric>();
         } catch (const std::exception& e) {
             ROS_ERROR("[%s] Exception caught: %s. Terminating node.", ros::this_node::getName().c_str(), e.what());
