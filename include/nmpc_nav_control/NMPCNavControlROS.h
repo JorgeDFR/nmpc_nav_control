@@ -11,6 +11,7 @@
 #include <tf2/utils.h>
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <nav_msgs/Path.h>
 #include <std_msgs/String.h>
 
 #include <itrci_nav/ParametricPathSet.h>
@@ -40,6 +41,7 @@ class NMPCNavControlROS {
         ros::Publisher pub_cmd_vel_;
         ros::Publisher pub_control_status_;
         ros::Publisher pub_actual_path_;
+        ros::Publisher pub_debug_discretized_path_;
 
         ros::Timer main_timer_;
 
@@ -88,6 +90,7 @@ class NMPCNavControlROS {
         void pubCmdVel(bool stop = false);
         void pubControlStatus();
         void pubActualPath();
+        void pubDebugDiscretizedPath(std::vector<PathDiscretizer::Pose> poses);
         bool getRobotPose(const std::string& global_frame_id, ros::Time& time_stamp);
         bool getRobotVel(const std::string& global_frame_id, const ros::Time& time_stamp); // WIP
         bool getSteeringWheelAngle(const ros::Time& time_stamp);

@@ -20,17 +20,18 @@ NMPCNavControlROS::NMPCNavControlROS() : nh_priv_("~")
     tf_buffer_ = std::make_unique<tf2_ros::Buffer>();
     tf_listener_ = std::make_unique<tf2_ros::TransformListener>(*tf_buffer_);
 
-    sub_goal_pose_          = nh_.subscribe<geometry_msgs::PoseStamped>("pose_goal", 10,
+    sub_goal_pose_              = nh_.subscribe<geometry_msgs::PoseStamped>("pose_goal", 10,
                               &NMPCNavControlROS::goalPoseReceivedCallback, this);
-    sub_path_no_stack_up_   = nh_.subscribe<itrci_nav::ParametricPathSet>("path_no_stack_up", 10,
+    sub_path_no_stack_up_       = nh_.subscribe<itrci_nav::ParametricPathSet>("path_no_stack_up", 10,
                               &NMPCNavControlROS::pathNoStackUpReceivedCallback, this);
-    sub_path_no_stack_up_2_ = nh_.subscribe<itrci_nav::ParametricPathSet2>("path_no_stack_up_2", 10,
+    sub_path_no_stack_up_2_     = nh_.subscribe<itrci_nav::ParametricPathSet2>("path_no_stack_up_2", 10,
                               &NMPCNavControlROS::pathNoStackUp2ReceivedCallback, this);
-    sub_control_command_    = nh_.subscribe<std_msgs::String>("control_command", 10,
+    sub_control_command_        = nh_.subscribe<std_msgs::String>("control_command", 10,
                               &NMPCNavControlROS::controlCommandReceivedCallback, this);
-    pub_cmd_vel_            = nh_.advertise<geometry_msgs::Twist>("cmd_vel", 10);
-    pub_control_status_     = nh_.advertise<itrci_nav::parametric_trajectories_control_status>("control_status", 10);
-    pub_actual_path_        = nh_.advertise<itrci_nav::ParametricPathSet>("actual_path", 10);
+    pub_cmd_vel_                = nh_.advertise<geometry_msgs::Twist>("cmd_vel", 10);
+    pub_control_status_         = nh_.advertise<itrci_nav::parametric_trajectories_control_status>("control_status", 10);
+    pub_actual_path_            = nh_.advertise<itrci_nav::ParametricPathSet>("actual_path", 10);
+    pub_debug_discretized_path_ = nh_.advertise<nav_msgs::Path>("debug_discretized_path", 10);
 
     ros::Duration timer_period = ros::Duration(static_cast<double>(1.0/control_freq_));
     main_timer_ = nh_priv_.createTimer(timer_period, &NMPCNavControlROS::mainTimerCallBack, this, false, false);
@@ -353,17 +354,17 @@ void NMPCNavControlROS::pubCmdVel(bool stop)
 void NMPCNavControlROS::pubControlStatus()
 {
     itrci_nav::parametric_trajectories_control_status msg;
-    double patch_remains;
+    double path_remains;
     switch (current_status_) {
         case Status::Idle:
         case Status::Break:
             msg.status = itrci_nav::parametric_trajectories_control_status::STATUS_IDLE;
             break;
         case Status::FollowPath:
-            patch_remains = active_path_.size() + upcoming_path_.size();
-            if (patch_remains > 0) { patch_remains = patch_remains - active_path_u_; }
+            path_remains = active_path_.size() + upcoming_path_.size();
+            if (path_remains > 0) { path_remains = path_remains - active_path_u_; }
             msg.request_id = path_request_id_; // TODO: ?????
-            msg.patch_remains = patch_remains; // TODO: ?????
+            msg.patch_remains = path_remains; // TODO: ?????
             msg.status = itrci_nav::parametric_trajectories_control_status::STATUS_WORKING;
             break;
         case Status::GoToPose:
@@ -537,9 +538,7 @@ void NMPCNavControlROS::getInputData(const std::string& global_frame_id)
     ros::Time time_stamp;
     valid_data = getRobotPose(global_frame_id, time_stamp);
     valid_data = getRobotVel(global_frame_id, time_stamp);
-    if (steering_geometry_ == kTricStr) {
-        valid_data &= getSteeringWheelAngle(time_stamp);
-    }
+    if (steering_geometry_ == kTricStr) { valid_data &= getSteeringWheelAngle(time_stamp); }
     if (!valid_data) { current_status_ = Status::Error; }
 }
 
@@ -616,6 +615,8 @@ void NMPCNavControlROS::processGoToPose()
     pose.theta = tf2::getYaw(goal_pose_.pose.orientation);
     goal_pose_array.push_back(pose);
 
+    // TODO: Safe condition (do not allow poses that are too far from the robot)
+
     // Check end of trajectory
     double d = dist(robot_pose_.x, robot_pose_.y, pose.x, pose.y);
     double ang = normAngRad(robot_pose_.theta - pose.theta);
@@ -633,9 +634,13 @@ void NMPCNavControlROS::processFollowPath()
     processNearestPoint();
     processPathBuffers(active_path_u_);
 
+    // TODO: Safe condition (stop robot if the robot is to far from the path)
+
     PathDiscretizer pathDiscretizer(mpc_control_->getDeltaTime(), mpc_control_->getHorizon()+1, false);
     std::vector<PathDiscretizer::Pose> next_poses;
     pathDiscretizer.getNextNPoses(active_path_, active_path_u_, next_poses);
+
+    pubDebugDiscretizedPath(next_poses);
 
     std::list<NMPCNavControl::Pose> goal_pose_array;
     for (size_t i = 0; i < next_poses.size(); i++) {
@@ -685,6 +690,24 @@ void NMPCNavControlROS::executeNMPC(const std::list<NMPCNavControl::Pose>& goal_
         ROS_ERROR("[%s] Exception caught: %s.", ros::this_node::getName().c_str(), e.what());
         current_status_ = Status::Error;
     }
+}
+
+void NMPCNavControlROS::pubDebugDiscretizedPath(std::vector<PathDiscretizer::Pose> poses)
+{
+    nav_msgs::Path debug_path_msg;
+    debug_path_msg.header.stamp = ros::Time::now();
+    debug_path_msg.header.frame_id = global_frame_id_;
+    for (const auto& pose : poses) {
+        geometry_msgs::PoseStamped pose_stamped;
+        pose_stamped.header = debug_path_msg.header;
+        pose_stamped.pose.position.x = pose.x;
+        pose_stamped.pose.position.y = pose.y;
+        tf2::Quaternion q;
+        q.setRPY(0, 0, pose.theta);
+        pose_stamped.pose.orientation = tf2::toMsg(q);
+        debug_path_msg.poses.push_back(pose_stamped);
+    }
+    pub_debug_discretized_path_.publish(debug_path_msg);
 }
 
 } // namespace nmpc_nav_control

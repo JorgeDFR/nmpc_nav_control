@@ -23,6 +23,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf2
   tf2_ros
   geometry_msgs
+  nav_msgs
   itrci_nav
   parametric_trajectories_common
 )
@@ -49,9 +50,10 @@ catkin_package(
     tf2
     tf2_ros
     geometry_msgs
+    nav_msgs
     itrci_nav
     parametric_trajectories_common
-  DEPENDS 
+  DEPENDS
     Eigen3
     ACADOS
 )
@@ -63,7 +65,7 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
   ${ACADOS_INCLUDE_DIRS}
   ${omni4amr_model}
-  ${diff2amr_model} 
+  ${diff2amr_model}
   ${tric3amr_model}
 )
 link_directories(${omni4amr_model})
