@@ -21,13 +21,13 @@ NMPCNavControlROS::NMPCNavControlROS() : nh_priv_("~")
     tf_listener_ = std::make_unique<tf2_ros::TransformListener>(*tf_buffer_);
 
     sub_goal_pose_              = nh_.subscribe<geometry_msgs::PoseStamped>("pose_goal", 10,
-                              &NMPCNavControlROS::goalPoseReceivedCallback, this);
+                                  &NMPCNavControlROS::goalPoseReceivedCallback, this);
     sub_path_no_stack_up_       = nh_.subscribe<itrci_nav::ParametricPathSet>("path_no_stack_up", 10,
-                              &NMPCNavControlROS::pathNoStackUpReceivedCallback, this);
+                                  &NMPCNavControlROS::pathNoStackUpReceivedCallback, this);
     sub_path_no_stack_up_2_     = nh_.subscribe<itrci_nav::ParametricPathSet2>("path_no_stack_up_2", 10,
-                              &NMPCNavControlROS::pathNoStackUp2ReceivedCallback, this);
+                                  &NMPCNavControlROS::pathNoStackUp2ReceivedCallback, this);
     sub_control_command_        = nh_.subscribe<std_msgs::String>("control_command", 10,
-                              &NMPCNavControlROS::controlCommandReceivedCallback, this);
+                                  &NMPCNavControlROS::controlCommandReceivedCallback, this);
     pub_cmd_vel_                = nh_.advertise<geometry_msgs::Twist>("cmd_vel", 10);
     pub_control_status_         = nh_.advertise<itrci_nav::parametric_trajectories_control_status>("control_status", 10);
     pub_actual_path_            = nh_.advertise<itrci_nav::ParametricPathSet>("actual_path", 10);
@@ -58,6 +58,12 @@ void NMPCNavControlROS::readParam()
     nh_priv_.param<double>("final_orientation_error", final_orientation_error_, 1.0);
     final_orientation_error_ = final_orientation_error_ * M_PI/180.0;
 
+    nh_priv_.param<bool>("enable_safe_conditions", enable_safe_conditions_, true);
+    nh_priv_.param<double>("max_goal_pose_dist", max_goal_pose_dist_, 2.0);
+    nh_priv_.param<double>("max_pos_error_to_path", max_pos_error_to_path_, 0.5);
+    nh_priv_.param<double>("max_ori_error_to_path", max_ori_error_to_path_, 60.0);
+    max_ori_error_to_path_ = max_ori_error_to_path_ * M_PI/180.0;
+
     ROS_INFO("[%s] Global frame ID: %s", ros::this_node::getName().c_str(), global_frame_id_.c_str());
     ROS_INFO("[%s] Base frame ID: %s", ros::this_node::getName().c_str(), base_frame_id_.c_str());
     ROS_INFO("[%s] Controller frequency: %d Hz", ros::this_node::getName().c_str(), control_freq_);
@@ -65,6 +71,10 @@ void NMPCNavControlROS::readParam()
     ROS_INFO("[%s] Maximum active path length: %lf m", ros::this_node::getName().c_str(), max_active_path_length_);
     ROS_INFO("[%s] Final position error: %lf m", ros::this_node::getName().c_str(), final_position_error_);
     ROS_INFO("[%s] Final orientation error: %lf deg", ros::this_node::getName().c_str(), final_orientation_error_*180/M_PI);
+    ROS_INFO("[%s] Enable safe conditions: %s", ros::this_node::getName().c_str(), enable_safe_conditions_ ? "yes" : "no");
+    ROS_INFO("[%s] Maximum goal pose distance: %lf m", ros::this_node::getName().c_str(), max_goal_pose_dist_);
+    ROS_INFO("[%s] Maximum position error to path: %lf m", ros::this_node::getName().c_str(), max_pos_error_to_path_);
+    ROS_INFO("[%s] Maximum orientation error to path: %lf deg", ros::this_node::getName().c_str(), max_ori_error_to_path_*180/M_PI);
 
     nh_priv_.getParam("steering_geometry", steering_geometry_);
     ROS_INFO("[%s] Steering geometry: %s", ros::this_node::getName().c_str(), steering_geometry_.c_str());
@@ -547,7 +557,7 @@ void NMPCNavControlROS::processPathReceived(const itrci_nav::ParametricPathSet& 
     current_status_ = Status::FollowPath;
 
     if (path.PathSet.empty()) {
-        ROS_WARN("Received an empty Path, ignoring...");
+        ROS_WARN("[%s] Received an empty Path, ignoring...", ros::this_node::getName().c_str());
         return;
     }
     parametric_trajectories_common::TPathSetRosDecode path_set_ros_decode;
@@ -575,7 +585,7 @@ void NMPCNavControlROS::processPathBuffers(const double active_path_u)
         if (active_path_.size() > 0) {
             parametric_trajectories_common::TPath active_path_test = active_path_.back();
             parametric_trajectories_common::TPath upcoming_path_test = upcoming_path_.front();
-            if ((active_path_test.GetVelocity() * upcoming_path_test.GetVelocity()) < 0) { break; }
+            if ((active_path_test.GetVelocity() * upcoming_path_test.GetVelocity()) < 0.0) { break; }
             if (active_path_test.GetFrameId() != upcoming_path_test.GetFrameId()) { break; }
         }
         active_path_.push_back(upcoming_path_.front());
@@ -584,10 +594,9 @@ void NMPCNavControlROS::processPathBuffers(const double active_path_u)
     }
 }
 
-void NMPCNavControlROS::processNearestPoint()
+void NMPCNavControlROS::processNearestPoint(double& x, double& y, double& theta, double& theta_holonomic)
 {
     parametric_trajectories_common::TPathProcessMinDist min_dist_opti(10, 0.01);
-    double x, y, theta, theta_holonomic;
     active_path_u_ = min_dist_opti.GetMinDist(active_path_, robot_pose_.x, robot_pose_.y, robot_pose_.theta,
                                               x, y, theta, theta_holonomic);
 
@@ -608,14 +617,21 @@ void NMPCNavControlROS::processBreak()
 
 void NMPCNavControlROS::processGoToPose()
 {
+    double dist_to_goal_pose = dist(goal_pose_.pose.position.x, goal_pose_.pose.position.y,
+                                    robot_pose_.x, robot_pose_.y);
+    if (enable_safe_conditions_ && (dist_to_goal_pose >= max_goal_pose_dist_)) {
+        pubCmdVel(true);
+        current_status_ = Status::Idle;
+        ROS_WARN("[%s] Goal pose to far away from the robot, aborting...", ros::this_node::getName().c_str());
+        return;
+    }
+
     std::list<NMPCNavControl::Pose> goal_pose_array;
     NMPCNavControl::Pose pose;
     pose.x = goal_pose_.pose.position.x;
     pose.y = goal_pose_.pose.position.y;
     pose.theta = tf2::getYaw(goal_pose_.pose.orientation);
     goal_pose_array.push_back(pose);
-
-    // TODO: Safe condition (do not allow poses that are too far from the robot)
 
     // Check end of trajectory
     double d = dist(robot_pose_.x, robot_pose_.y, pose.x, pose.y);
@@ -631,10 +647,21 @@ void NMPCNavControlROS::processGoToPose()
 
 void NMPCNavControlROS::processFollowPath()
 {
-    processNearestPoint();
+    double x, y, theta, theta_holonomic;
+    processNearestPoint(x, y, theta, theta_holonomic);
     processPathBuffers(active_path_u_);
 
-    // TODO: Safe condition (stop robot if the robot is to far from the path)
+    if (steering_geometry_ == kOmni4Str) { theta = theta_holonomic; }
+    else if (active_path_.front().GetVelocity() < 0.0) { theta += M_PI; }
+    double pos_error_to_path = dist(x, y, robot_pose_.x, robot_pose_.y);
+    double ori_error_to_path = fabs(normAngRad(theta - robot_pose_.theta));
+    if (enable_safe_conditions_ && ((pos_error_to_path >= max_pos_error_to_path_) ||
+                                    (ori_error_to_path >= max_ori_error_to_path_))) {
+        pubCmdVel(true);
+        current_status_ = Status::Error;
+        ROS_ERROR("[%s] Error to path too big, aborting...", ros::this_node::getName().c_str());
+        return;
+    }
 
     PathDiscretizer pathDiscretizer(mpc_control_->getDeltaTime(), mpc_control_->getHorizon()+1, false);
     std::vector<PathDiscretizer::Pose> next_poses;

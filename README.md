@@ -44,6 +44,10 @@ With this version, the package provides the following features:
 - `max_active_path_length` (double, default: `5.0`): Maximum active path length (m)
 - `final_position_error` (double, default: `0.01`): Final position tolerance for reaching the goal (m)
 - `final_orientation_error` (double, default: `1.0`): Final orientation tolerance for reaching the goal (deg)
+- `enable_safe_conditions` (bool, default: `true`): Enable safe conditions to stop the controller
+- `max_goal_pose_dist` (double, default: `2.0`): Maximum goal pose distance (m)
+- `max_pos_error_to_path` (double, default: `0.5`): Maximum position distance error to the path (m)
+- `max_ori_error_to_path` (double, default: `60.0`): Maximum orientation error to the path (deg)
 
 #### Omnidirectional (`omni4`)
 - `rob_dist_between_front_back_wh` (double, **required**): Distance between the front and back wheels (m)

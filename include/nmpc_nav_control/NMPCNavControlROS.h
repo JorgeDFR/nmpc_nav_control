@@ -53,6 +53,10 @@ class NMPCNavControlROS {
         double transform_timeout_;
         double final_position_error_;
         double final_orientation_error_;
+        bool enable_safe_conditions_;
+        double max_goal_pose_dist_;
+        double max_pos_error_to_path_;
+        double max_ori_error_to_path_;
 
         std::unique_ptr<NMPCNavControl> mpc_control_;
         std::unique_ptr<NMPCNavControl::CmdVel> robot_vel_ref_;
@@ -99,13 +103,13 @@ class NMPCNavControlROS {
         void mainCycle();
 
         // Other topics that can receive paths
-        // void pathNoStackUpReceivedCallback(const itrci_nav::ParametricPathSet::ConstPtr& msg); // Topic: 'PathNoStackUp'
+        // void pathStackUpReceivedCallback(const itrci_nav::ParametricPathSet::ConstPtr& msg); // Topic: 'PathStackUp'
         // void pathWithEndOffsetReceivedCallback(const itrci_nav::ParametricPathSetWithEndOffset::ConstPtr &msg); // Topic: 'PathWithEndOffset'
 
         void getInputData(const std::string& global_frame_id);
         void processPathReceived(const itrci_nav::ParametricPathSet& path);
         void processPathBuffers(const double active_path_u);
-        void processNearestPoint();
+        void processNearestPoint(double& x, double& y, double& theta, double& theta_holonomic);
         void processBreak();
         void processGoToPose();
         void processFollowPath();

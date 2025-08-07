@@ -7,6 +7,11 @@ max_active_path_length: 5.0                # meters
 final_position_error: 0.01                 # meters
 final_orientation_error: 1.0               # degrees
 
+enable_safe_conditions: true
+max_goal_pose_dist: 2.0                    # meters
+max_pos_error_to_path: 0.5                 # meters
+max_ori_error_to_path: 60.0                # degrees
+
 # For omnidiretional robots
 steering_geometry: omni4
 rob_dist_between_front_back_wh: 0.265      # meters
